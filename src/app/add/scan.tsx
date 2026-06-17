@@ -1,71 +1,92 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   StyleSheet,
   Image,
   DimensionValue,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { format, addMonths } from 'date-fns';
+import { takePendingScan } from '@/services/scanHandoff';
+import { format, addDays } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { recognizeReceipt, recognizeReceiptFromImage, ReceiptItem } from '@/services/ocr';
 import { useProducts } from '@/context/ProductsContext';
 import { DateInput } from '@/components/DateInput';
-import { Select } from '@/components/Select';
+import { IngredientPicker } from '@/components/IngredientPicker';
 import { Button } from '@/components/Button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
+import { resolveCanonicalId, getIngredient, suggestedShelfLifeDays } from '@/utils/ingredients';
+import { IngredientCategory } from '@/types';
 
-const CATEGORIES = [
-  'Laticínios', 'Hortifruti', 'Carnes', 'Padaria',
-  'Bebidas', 'Mercearia', 'Limpeza', 'Outros',
-].map((c) => ({ label: c, value: c }));
-
-interface EditableItem extends ReceiptItem {
+interface EditableItem {
+  name: string;
+  canonicalId?: string;
+  quantity: number;
+  unit: string;
+  category: string;
   expiryDate: string;
 }
 
-const DEFAULT_EXPIRY = format(addMonths(new Date(), 1), 'yyyy-MM-dd');
+function expiryFromDays(days: number): string {
+  return format(addDays(new Date(), days), 'yyyy-MM-dd');
+}
+
+/** Build a review row from a raw name, auto-mapping canonical + category + typical expiry. */
+function buildItem(
+  name: string,
+  quantity: number,
+  unit: string,
+  fallbackCategory?: string,
+  canonicalId?: string,
+): EditableItem {
+  const cid = canonicalId ?? resolveCanonicalId(name);
+  const ing = getIngredient(cid);
+  return {
+    name,
+    canonicalId: cid,
+    quantity,
+    unit,
+    category: ing?.category ?? fallbackCategory ?? 'Outros',
+    expiryDate: expiryFromDays(suggestedShelfLifeDays(cid)),
+  };
+}
 
 export default function ScanScreen() {
   const theme = useTheme();
   const { addProducts } = useProducts();
 
-  // Image state
   const [imageUri, setImageUri] = useState<string | null>(null);
-
-  // OCR progress state
   const [recognizing, setRecognizing] = useState(false);
   const [ocrStatus, setOcrStatus] = useState('');
   const [ocrProgress, setOcrProgress] = useState(0);
   const [usedFallback, setUsedFallback] = useState(false);
-
-  // Mock-scan state (existing demo)
   const [scanning, setScanning] = useState(false);
-
-  // Review list
   const [items, setItems] = useState<EditableItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Items handed off from the QR-scan flow (NFC-e)
+  useEffect(() => {
+    const pending = takePendingScan();
+    if (pending && pending.length > 0) ingest(pending);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // -------------------------------------------------------------------------
   // Image acquisition
   // -------------------------------------------------------------------------
 
   async function handlePickImage() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 1,
-    });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     if (!result.canceled && result.assets.length > 0) {
-      const uri = result.assets[0]?.uri ?? null;
-      setImageUri(uri);
+      setImageUri(result.assets[0]?.uri ?? null);
       setUsedFallback(false);
       setOcrStatus('');
       setOcrProgress(0);
@@ -75,22 +96,18 @@ export default function ScanScreen() {
   async function handleTakePhoto() {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') return;
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 1,
-    });
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
     if (!result.canceled && result.assets.length > 0) {
-      const uri = result.assets[0]?.uri ?? null;
-      setImageUri(uri);
+      setImageUri(result.assets[0]?.uri ?? null);
       setUsedFallback(false);
       setOcrStatus('');
       setOcrProgress(0);
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Real OCR
-  // -------------------------------------------------------------------------
+  function ingest(recognized: ReceiptItem[]) {
+    setItems(recognized.map((r) => buildItem(r.name, r.quantity, r.unit, r.category)));
+  }
 
   async function handleRecognize() {
     if (!imageUri) return;
@@ -107,22 +124,17 @@ export default function ScanScreen() {
         },
       );
       setUsedFallback(fell);
-      setItems(recognized.map((r) => ({ ...r, expiryDate: DEFAULT_EXPIRY })));
+      ingest(recognized);
       setOcrStatus('');
     } finally {
       setRecognizing(false);
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Mock demo (existing behavior)
-  // -------------------------------------------------------------------------
-
   async function handleScan() {
     setScanning(true);
     try {
-      const result = await recognizeReceipt();
-      setItems(result.map((r) => ({ ...r, expiryDate: DEFAULT_EXPIRY })));
+      ingest(await recognizeReceipt());
       setUsedFallback(false);
     } finally {
       setScanning(false);
@@ -134,29 +146,51 @@ export default function ScanScreen() {
   // -------------------------------------------------------------------------
 
   function updateItem(index: number, patch: Partial<EditableItem>) {
-    setItems((prev) => prev.map((item, i) => i === index ? { ...item, ...patch } : item));
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+
+  /** When the ingredient changes, re-map category + typical expiry automatically. */
+  function changeIngredient(index: number, name: string, canonicalId?: string, category?: IngredientCategory) {
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        return {
+          ...item,
+          name,
+          canonicalId,
+          category: category ?? item.category,
+          expiryDate: canonicalId ? expiryFromDays(suggestedShelfLifeDays(canonicalId)) : item.expiryDate,
+        };
+      }),
+    );
   }
 
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function addManualItem() {
+    setItems((prev) => [...prev, buildItem('', 1, 'un')]);
+  }
+
   async function handleAdd() {
-    if (items.length === 0) return;
+    const valid = items.filter((it) => it.name.trim());
+    if (valid.length === 0) return;
     setSubmitting(true);
     const today = format(new Date(), 'yyyy-MM-dd');
     try {
       await addProducts(
-        items.map((item) => ({
-          name: item.name,
+        valid.map((item) => ({
+          name: item.name.trim(),
+          canonicalId: item.canonicalId,
           category: item.category,
           quantity: item.quantity,
           unit: item.unit,
           purchaseDate: today,
-          expiryDate: item.expiryDate || DEFAULT_EXPIRY,
+          expiryDate: item.expiryDate || expiryFromDays(30),
           source: 'receipt_scan' as const,
           consumed: false,
-        }))
+        })),
       );
       router.replace('/(tabs)');
     } finally {
@@ -164,11 +198,8 @@ export default function ScanScreen() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
-
   const progressPercent = Math.round(ocrProgress * 100);
+  const validCount = items.filter((it) => it.name.trim()).length;
 
   return (
     <ScrollView
@@ -180,43 +211,36 @@ export default function ScanScreen() {
       <ThemedView type="backgroundElement" style={styles.notice}>
         <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
         <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
-          O reconhecimento acontece no próprio dispositivo via Tesseract.js (gratuito, sem envio a servidores). Selecione ou fotografe o cupom fiscal e toque em "Reconhecer produtos". O botão "Simular" é uma demonstração rápida.
+          Fotografe ou selecione o cupom fiscal e toque em “Reconhecer produtos”. O reconhecimento roda no próprio aparelho. Cada item vem com uma validade típica já sugerida — revise e ajuste rapidinho se quiser.
         </ThemedText>
       </ThemedView>
 
-      {/* Image acquisition buttons */}
+      {/* QR Code da NFC-e (carro-chefe — mais preciso; só no app nativo) */}
+      {Platform.OS !== 'web' && (
+        <Button
+          title="Ler QR Code da nota fiscal"
+          onPress={() => router.push('/add/qrcode')}
+          variant="primary"
+          disabled={recognizing}
+        />
+      )}
+
+      {/* Image acquisition */}
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
-          <Button
-            title="Selecionar imagem"
-            onPress={handlePickImage}
-            variant="secondary"
-            disabled={recognizing}
-          />
+          <Button title="Selecionar imagem" onPress={handlePickImage} variant="secondary" disabled={recognizing} />
         </View>
         <View style={{ flex: 1 }}>
-          <Button
-            title="Tirar foto"
-            onPress={handleTakePhoto}
-            variant="secondary"
-            disabled={recognizing}
-          />
+          <Button title="Tirar foto" onPress={handleTakePhoto} variant="secondary" disabled={recognizing} />
         </View>
       </View>
 
-      {/* Image preview */}
       {imageUri ? (
         <ThemedView type="backgroundElement" style={styles.previewContainer}>
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.preview}
-            resizeMode="contain"
-            accessibilityLabel="Pré-visualização da imagem selecionada"
-          />
+          <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="contain" accessibilityLabel="Pré-visualização do cupom" />
         </ThemedView>
       ) : null}
 
-      {/* Recognize button */}
       <Button
         title={recognizing ? `Reconhecendo… ${progressPercent}%` : 'Reconhecer produtos'}
         onPress={handleRecognize}
@@ -225,100 +249,104 @@ export default function ScanScreen() {
         disabled={!imageUri || recognizing}
       />
 
-      {/* OCR progress bar + status */}
       {recognizing && (
         <View style={styles.progressWrapper}>
           <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
-            <View
-              style={[
-                styles.progressFill,
-                { backgroundColor: theme.primary, width: `${progressPercent}%` as DimensionValue },
-              ]}
-            />
+            <View style={[styles.progressFill, { backgroundColor: theme.primary, width: `${progressPercent}%` as DimensionValue }]} />
           </View>
           {ocrStatus ? (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.progressLabel}>
-              {ocrStatus}
-            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.progressLabel}>{ocrStatus}</ThemedText>
           ) : null}
         </View>
       )}
 
-      {/* Fallback note */}
       {usedFallback && items.length > 0 && (
         <ThemedView type="backgroundElement" style={styles.fallbackNote}>
           <Ionicons name="warning-outline" size={16} color={theme.textSecondary} />
           <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
-            Não foi possível ler a imagem com clareza — usando exemplo. Ajuste os itens.
+            Não foi possível ler a imagem com clareza — usando um exemplo. Ajuste os itens.
           </ThemedText>
         </ThemedView>
       )}
 
-      {/* Mock / demo button */}
-      <Button
-        title={scanning ? 'Simulando...' : 'Simular escaneamento de comprovante'}
-        onPress={handleScan}
-        loading={scanning}
-        variant="secondary"
-        disabled={recognizing}
-      />
+      <View style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <Button title={scanning ? 'Simulando...' : 'Simular leitura'} onPress={handleScan} loading={scanning} variant="secondary" disabled={recognizing} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button title="Adicionar item" onPress={addManualItem} variant="secondary" disabled={recognizing} />
+        </View>
+      </View>
 
       {/* Items review */}
       {items.length > 0 && (
         <View style={styles.itemsSection}>
           <ThemedText style={styles.sectionTitle}>
-            {items.length} produto{items.length !== 1 ? 's' : ''} reconhecido{items.length !== 1 ? 's' : ''}
+            {validCount} {validCount === 1 ? 'item' : 'itens'} para revisar
           </ThemedText>
 
-          {items.map((item, index) => (
-            <ThemedView key={index} type="backgroundElement" style={styles.itemCard}>
-              <View style={styles.itemHeader}>
-                <ThemedText style={styles.itemName}>{item.name}</ThemedText>
-                <TouchableOpacity onPress={() => removeItem(index)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
-                </TouchableOpacity>
-              </View>
+          {items.map((item, index) => {
+            const recognized = getIngredient(item.canonicalId);
+            return (
+              <ThemedView key={index} type="backgroundElement" style={styles.itemCard}>
+                <View style={styles.itemHeader}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.itemIndex}>
+                    {index + 1}.
+                  </ThemedText>
+                  <View style={{ flex: 1 }}>
+                    <IngredientPicker
+                      name={item.name}
+                      canonicalId={item.canonicalId}
+                      onChange={(next) => changeIngredient(index, next.name, next.canonicalId, next.category)}
+                      placeholder="Nome do produto"
+                    />
+                  </View>
+                  <TouchableOpacity onPress={() => removeItem(index)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="trash-outline" size={20} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
 
-              <View style={styles.row}>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <ThemedText type="small" style={styles.fieldLabel}>Qtd</ThemedText>
-                  <TextInput
-                    style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
-                    value={String(item.quantity)}
-                    onChangeText={(v) => updateItem(index, { quantity: Number(v) || 1 })}
-                    keyboardType="numeric"
-                  />
+                <View style={styles.row}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <ThemedText type="small" style={styles.fieldLabel}>Qtd</ThemedText>
+                    <TextInput
+                      style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                      value={String(item.quantity)}
+                      onChangeText={(v) => updateItem(index, { quantity: Number(v) || 1 })}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <ThemedText type="small" style={styles.fieldLabel}>Unidade</ThemedText>
+                    <TextInput
+                      style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                      value={item.unit}
+                      onChangeText={(v) => updateItem(index, { unit: v })}
+                    />
+                  </View>
                 </View>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <ThemedText type="small" style={styles.fieldLabel}>Unidade</ThemedText>
-                  <TextInput
-                    style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
-                    value={item.unit}
-                    onChangeText={(v) => updateItem(index, { unit: v })}
-                  />
-                </View>
-                <View style={[styles.field, { flex: 2 }]}>
-                  <ThemedText type="small" style={styles.fieldLabel}>Categoria</ThemedText>
-                  <Select
-                    options={CATEGORIES}
-                    value={item.category}
-                    onChange={(v) => updateItem(index, { category: v })}
-                  />
-                </View>
-              </View>
 
-              <DateInput
-                label="Validade"
-                value={item.expiryDate}
-                onChange={(d) => updateItem(index, { expiryDate: d })}
-              />
-            </ThemedView>
-          ))}
+                <DateInput label="Validade" value={item.expiryDate} onChange={(d) => updateItem(index, { expiryDate: d })} />
+
+                {recognized && (
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.recognizedHint}>
+                    ✓ {recognized.name} · {recognized.category} · validade típica {suggestedShelfLifeDays(item.canonicalId)} dias
+                  </ThemedText>
+                )}
+              </ThemedView>
+            );
+          })}
+
+          <TouchableOpacity onPress={addManualItem} style={[styles.addRow, { borderColor: theme.border }]} activeOpacity={0.7}>
+            <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
+            <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>Adicionar outro item</ThemedText>
+          </TouchableOpacity>
 
           <Button
-            title={`Adicionar ${items.length} produto${items.length !== 1 ? 's' : ''}`}
+            title={`Adicionar ${validCount} ${validCount === 1 ? 'produto' : 'produtos'} à despensa`}
             onPress={handleAdd}
             loading={submitting}
+            disabled={validCount === 0}
             style={styles.addBtn}
           />
         </View>
@@ -329,92 +357,25 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: {
-    padding: Spacing.three,
-    gap: Spacing.three,
-    maxWidth: 600,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  notice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
-  },
-  previewContainer: {
-    borderRadius: Spacing.two,
-    overflow: 'hidden',
-    alignItems: 'center',
-  },
-  preview: {
-    width: '100%',
-    height: 220,
-  },
-  progressWrapper: {
-    gap: Spacing.one,
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: 6,
-    borderRadius: 3,
-  },
-  progressLabel: {
-    textAlign: 'center',
-  },
-  fallbackNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-    padding: Spacing.two,
-    borderRadius: Spacing.two,
-  },
-  sectionTitle: {
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  itemsSection: {
-    gap: Spacing.three,
-  },
-  itemCard: {
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  itemName: {
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  field: {
-    gap: Spacing.half,
-  },
-  fieldLabel: {
-    fontWeight: '600',
-  },
-  smallInput: {
-    borderWidth: 1,
-    borderRadius: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one + 2,
-    fontSize: 14,
-    minHeight: 36,
-  },
-  addBtn: {
-    marginTop: Spacing.two,
-    marginBottom: Spacing.six,
-  },
+  content: { padding: Spacing.three, gap: Spacing.three, maxWidth: 600, width: '100%', alignSelf: 'center' },
+  notice: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two, padding: Spacing.three, borderRadius: Spacing.two },
+  previewContainer: { borderRadius: Spacing.two, overflow: 'hidden', alignItems: 'center' },
+  preview: { width: '100%', height: 220 },
+  progressWrapper: { gap: Spacing.one },
+  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: 6, borderRadius: 3 },
+  progressLabel: { textAlign: 'center' },
+  fallbackNote: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two, padding: Spacing.two, borderRadius: Spacing.two },
+  sectionTitle: { fontWeight: '700', fontSize: 16 },
+  itemsSection: { gap: Spacing.three },
+  itemCard: { borderRadius: Spacing.two, padding: Spacing.three, gap: Spacing.two },
+  itemHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  itemIndex: { marginTop: Spacing.two + 4, fontWeight: '700' },
+  row: { flexDirection: 'row', gap: Spacing.two },
+  field: { gap: Spacing.half },
+  fieldLabel: { fontWeight: '600' },
+  smallInput: { borderWidth: 1, borderRadius: Spacing.one, paddingHorizontal: Spacing.two, paddingVertical: Spacing.one + 2, fontSize: 14, minHeight: 36 },
+  recognizedHint: { fontStyle: 'italic' },
+  addRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.one, paddingVertical: Spacing.two + 2, borderRadius: Spacing.two, borderWidth: 1, borderStyle: 'dashed' },
+  addBtn: { marginTop: Spacing.one, marginBottom: Spacing.six },
 });

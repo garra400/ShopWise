@@ -1,5 +1,49 @@
-import { CanonicalIngredient } from '@/types';
+import { CanonicalIngredient, IngredientCategory } from '@/types';
 import { INGREDIENTS, INGREDIENTS_BY_ID } from '@/data/ingredients';
+
+// ---------------------------------------------------------------------------
+// Typical shelf life (days from purchase) — used to pre-fill expiry on add/scan
+// ---------------------------------------------------------------------------
+
+/** Fallback by category when a specific ingredient has no override. */
+const SHELF_LIFE_BY_CATEGORY: Record<IngredientCategory, number> = {
+  Laticínios: 12,
+  Hortifruti: 7,
+  Carnes: 4,
+  Padaria: 5,
+  Bebidas: 120,
+  Mercearia: 365,
+  Outros: 30,
+};
+
+/** Per-ingredient overrides (more accurate than the category default). */
+const SHELF_LIFE_BY_ID: Record<string, number> = {
+  // Hortifruti
+  morango: 3, abacate: 4, mamao: 4, banana: 5, alface: 5, rucula: 4, espinafre: 4,
+  couve: 5, brocolis: 5, 'couve-flor': 5, cogumelo: 5, manga: 6, abacaxi: 6, melancia: 6,
+  tomate: 7, pepino: 7, uva: 7, mandioca: 8, vagem: 6, pimentao: 10, abobrinha: 10, berinjela: 10,
+  maca: 20, laranja: 15, limao: 20, inhame: 20, cenoura: 21, beterraba: 21, gengibre: 21,
+  batata: 30, 'batata-doce': 30, abobora: 30, cebola: 30, repolho: 14, alho: 60,
+  // Laticínios / ovos
+  leite: 7, iogurte: 20, queijo: 20, requeijao: 15, 'cream-cheese': 20, ovo: 21,
+  manteiga: 60, margarina: 60, 'creme-leite': 180, 'leite-condensado': 365, 'leite-po': 365,
+  // Carnes / peixes
+  peixe: 2, camarao: 2, frango: 3, 'carne-bovina': 4, 'carne-suina': 4,
+  presunto: 7, linguica: 7, salsicha: 14, bacon: 14, atum: 365, sardinha: 365,
+  // Padaria
+  pao: 5, bolo: 4, torrada: 120, biscoito: 120, tortilla: 30,
+  // Bebidas
+  suco: 5, 'leite-vegetal': 30, refrigerante: 180, agua: 365, cafe: 365, cha: 365,
+  // Mercearia perecível-ish
+  'pasta-amendoim': 180,
+};
+
+/** Typical shelf life in days for a canonical ingredient (or a safe default). */
+export function suggestedShelfLifeDays(id?: string): number {
+  const ing = getIngredient(id);
+  if (!ing) return 30;
+  return SHELF_LIFE_BY_ID[ing.id] ?? SHELF_LIFE_BY_CATEGORY[ing.category] ?? 30;
+}
 
 /** Lowercase, trim, strip accents — the shared normalization for all matching. */
 export function normalizeIngredient(text: string): string {

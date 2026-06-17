@@ -46,6 +46,12 @@
           "photosPermission": "O ShopWise acessa suas fotos para ler comprovantes de compra.",
           "cameraPermission": "O ShopWise usa a câmera para fotografar comprovantes de compra."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O ShopWise usa a câmera para ler o QR Code da nota fiscal."
+        }
       ]
     ],
     "experiments": {

@@ -1,6 +1,7 @@
-// Real OCR is free & on-device via Tesseract.js (web). Pluggable: OCR.space/Google Vision could replace this.
-import { Platform } from 'react-native';
+// Real OCR is free & on-device: Tesseract.js on web, Google ML Kit on native.
+// The engine is selected by Metro via platform-specific files (ocrEngine.web/native).
 import { parseReceiptText } from '@/services/ocrParser';
+import { recognizeText } from '@/services/ocrEngine';
 
 export interface ReceiptItem {
   name: string;
@@ -40,29 +41,16 @@ export async function recognizeReceipt(): Promise<ReceiptItem[]> {
 }
 
 /**
- * Run real OCR on an image URI (web-only via Tesseract.js).
- * On native, or if OCR yields no items, falls back to the mock recognizeReceipt().
+ * Run real OCR on an image URI using the platform engine (Tesseract on web,
+ * ML Kit on native). If the engine errors or the parser finds nothing usable,
+ * falls back to the mock recognizeReceipt().
  */
 export async function recognizeReceiptFromImage(
   imageUri: string,
   onProgress?: OcrProgress,
 ): Promise<{ items: ReceiptItem[]; usedFallback: boolean; rawText: string }> {
-  // On native, Tesseract.js is browser-only — use the mock
-  if (Platform.OS !== 'web') {
-    const items = await recognizeReceipt();
-    return { items, usedFallback: true, rawText: '' };
-  }
-
   try {
-    // Dynamic import so it is not eagerly bundled; safe for native build-eval
-    const Tesseract = (await import('tesseract.js')).default;
-
-    const { data } = await Tesseract.recognize(imageUri, 'por', {
-      logger: (m: { status: string; progress?: number }) =>
-        onProgress?.(m.status, m.progress ?? 0),
-    });
-
-    const rawText: string = data.text ?? '';
+    const rawText = await recognizeText(imageUri, onProgress);
     const items = parseReceiptText(rawText);
 
     if (items.length === 0) {
@@ -73,7 +61,7 @@ export async function recognizeReceiptFromImage(
 
     return { items, usedFallback: false, rawText };
   } catch {
-    // Any error (network for lang data, canvas issues, etc.) → mock fallback
+    // Any error (missing native module, network for lang data, etc.) → mock fallback
     const items = await recognizeReceipt();
     return { items, usedFallback: true, rawText: '' };
   }
