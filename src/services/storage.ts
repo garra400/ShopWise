@@ -6,6 +6,7 @@ const KEYS = {
   settings: 'shopwise:settings',
   seeded: 'shopwise:seeded',
   lastSyncAt: 'shopwise:lastSyncAt',
+  favorites: 'shopwise:favorites',
 } as const;
 
 const DEFAULT_SETTINGS: Settings = {
@@ -16,6 +17,8 @@ const DEFAULT_SETTINGS: Settings = {
   dietRestrictions: '',
   dietTags: [],
   allergens: [],
+  cuisines: [],
+  avoidIngredients: [],
 };
 
 export async function loadProducts(): Promise<Product[]> {
@@ -69,6 +72,25 @@ export async function loadSettings(): Promise<Settings> {
 export async function saveSettings(s: Settings): Promise<void> {
   try {
     await AsyncStorage.setItem(KEYS.settings, JSON.stringify(s));
+  } catch {
+    // silently fail on storage errors
+  }
+}
+
+export async function loadFavorites(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.favorites);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveFavorites(ids: string[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.favorites, JSON.stringify(ids));
   } catch {
     // silently fail on storage errors
   }

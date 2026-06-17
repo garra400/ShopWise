@@ -1,6 +1,6 @@
 import { Recipe } from '@/types';
 
-export const RECIPES: Recipe[] = [
+const LOCAL_RECIPES: Recipe[] = [
   // ── 1 ──────────────────────────────────────────────────────────────────────
   {
     id: 'r1',
@@ -287,3 +287,6 @@ export const RECIPES: Recipe[] = [
     origin: 'local',
   },
 ];
+
+/** All local recipes default to Brazilian cuisine. */
+export const RECIPES: Recipe[] = LOCAL_RECIPES.map((r) => ({ cuisine: 'brasileira', ...r }));

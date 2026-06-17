@@ -1,14 +1,17 @@
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/utils/nav';
 import { Ionicons } from '@expo/vector-icons';
 import { RECIPES } from '@/data/recipes';
 import { apiRecipeCache } from '@/services/recipesApi';
+import { communityRecipeCache } from '@/services/recipesRepo';
 import { useProducts } from '@/context/ProductsContext';
+import { useFavorites } from '@/context/FavoritesContext';
 import { matchRecipe, getAvailableProducts, ingredientMatchesProduct } from '@/utils/recipes';
-import { DIET_TAG_LABELS, ALLERGEN_LABELS } from '@/utils/diet';
+import { DIET_TAG_LABELS, ALLERGEN_LABELS, CUISINE_LABELS } from '@/utils/diet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { RecipeImage } from '@/components/RecipeImage';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
@@ -26,11 +29,12 @@ export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const { products } = useProducts();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   // Resolve recipe: local DB first, then API in-memory cache
   const recipe =
     RECIPES.find((r) => r.id === id) ??
-    (id ? apiRecipeCache.get(id) : undefined);
+    (id ? apiRecipeCache.get(id) ?? communityRecipeCache.get(id) : undefined);
 
   if (!recipe) {
     return (
@@ -53,6 +57,14 @@ export default function RecipeDetailScreen() {
       style={[styles.scroll, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.content}
     >
+      {/* Hero image */}
+      <RecipeImage
+        image={recipe.image}
+        title={recipe.title}
+        style={styles.hero}
+        iconSize={48}
+      />
+
       {/* Header */}
       <ThemedView type="backgroundElement" style={styles.header}>
         <View style={styles.titleRow}>
@@ -63,6 +75,17 @@ export default function RecipeDetailScreen() {
               <ThemedText style={[styles.originText, { color: theme.primary }]}>online</ThemedText>
             </View>
           )}
+          <TouchableOpacity
+            onPress={() => toggleFavorite(recipe.id)}
+            hitSlop={10}
+            accessibilityLabel={isFavorite(recipe.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+          >
+            <Ionicons
+              name={isFavorite(recipe.id) ? 'heart' : 'heart-outline'}
+              size={26}
+              color={isFavorite(recipe.id) ? '#E5484D' : theme.textSecondary}
+            />
+          </TouchableOpacity>
         </View>
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
@@ -73,6 +96,12 @@ export default function RecipeDetailScreen() {
             <Ionicons name="bar-chart-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="small" themeColor="textSecondary">{difficultyLabel(recipe.difficulty)}</ThemedText>
           </View>
+          {recipe.cuisine && (
+            <View style={styles.metaItem}>
+              <Ionicons name="globe-outline" size={16} color={theme.textSecondary} />
+              <ThemedText type="small" themeColor="textSecondary">{CUISINE_LABELS[recipe.cuisine]}</ThemedText>
+            </View>
+          )}
           <View style={[styles.matchBadge, { backgroundColor: theme.primary + '20' }]}>
             <ThemedText style={[styles.matchText, { color: theme.primary }]}>
               {match.matchPercentage}% disponível
@@ -108,7 +137,7 @@ export default function RecipeDetailScreen() {
       <ThemedView type="backgroundElement" style={styles.section}>
         <ThemedText style={styles.sectionTitle}>Ingredientes</ThemedText>
         {recipe.ingredients.map((ing, i) => {
-          const have = available.some((p) => ingredientMatchesProduct(ing.name, p.name));
+          const have = available.some((p) => ingredientMatchesProduct(ing, p));
           return (
             <View key={i} style={styles.ingredientRow}>
               <Ionicons
@@ -153,6 +182,11 @@ export default function RecipeDetailScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
+  hero: {
+    width: '100%',
+    height: 200,
+    borderRadius: Spacing.two,
+  },
   content: {
     padding: Spacing.three,
     gap: Spacing.three,

@@ -8,6 +8,7 @@ import React, {
 import { Product } from '@/types';
 import { loadProducts, saveProducts, hasSeeded, markSeeded } from '@/services/storage';
 import { SEED_PRODUCTS } from '@/data/seed';
+import { resolveCanonicalId } from '@/utils/ingredients';
 
 interface ProductsContextValue {
   products: Product[];
@@ -73,7 +74,13 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const addProduct = useCallback(
     async (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
       const now = new Date().toISOString();
-      const product: Product = { ...data, id: makeId(), createdAt: now, updatedAt: now };
+      const product: Product = {
+        ...data,
+        canonicalId: data.canonicalId ?? resolveCanonicalId(data.name),
+        id: makeId(),
+        createdAt: now,
+        updatedAt: now,
+      };
       await persist([...products, product]);
     },
     [products, persist]
@@ -84,6 +91,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       const now = new Date().toISOString();
       const newProducts: Product[] = list.map((data) => ({
         ...data,
+        canonicalId: data.canonicalId ?? resolveCanonicalId(data.name),
         id: makeId(),
         createdAt: now,
         updatedAt: now,

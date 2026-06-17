@@ -7,12 +7,13 @@ import { Segmented } from '@/components/Segmented';
 import { Select } from '@/components/Select';
 import { Button } from '@/components/Button';
 import { ChipMultiSelect } from '@/components/ChipMultiSelect';
+import { IngredientMultiSelect } from '@/components/IngredientMultiSelect';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
-import { DietTag, Allergen } from '@/types';
-import { DIET_TAG_LABELS, ALLERGEN_LABELS } from '@/utils/diet';
+import { DietTag, Allergen, CuisineTag } from '@/types';
+import { DIET_TAG_LABELS, ALLERGEN_LABELS, CUISINE_LABELS } from '@/utils/diet';
 
 const UNIT_OPTIONS = [
   { label: 'Unidade (un)', value: 'un' },
@@ -27,6 +28,10 @@ const DIET_TAG_OPTIONS = (Object.entries(DIET_TAG_LABELS) as [DietTag, string][]
 );
 
 const ALLERGEN_OPTIONS = (Object.entries(ALLERGEN_LABELS) as [Allergen, string][]).map(
+  ([value, label]) => ({ value, label }),
+);
+
+const CUISINE_OPTIONS = (Object.entries(CUISINE_LABELS) as [CuisineTag, string][]).map(
   ([value, label]) => ({ value, label }),
 );
 
@@ -178,6 +183,18 @@ export default function SettingsScreen() {
 
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
+        {/* Avoid ingredients */}
+        <ThemedText style={styles.subLabel}>Ingredientes que você evita</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+          Receitas que usam estes ingredientes não vão aparecer (ex: coentro, cebola).
+        </ThemedText>
+        <IngredientMultiSelect
+          values={settings.avoidIngredients}
+          onChange={(v) => updateSettings({ avoidIngredients: v })}
+        />
+
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
         {/* Free-text field (kept for backwards compatibility) */}
         <ThemedText style={styles.subLabel}>Outras restrições</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>
@@ -194,6 +211,20 @@ export default function SettingsScreen() {
           onChangeText={(v) => updateSettings({ dietRestrictions: v })}
           placeholder="Ex: sem glúten, intolerância à lactose..."
           placeholderTextColor={theme.textSecondary}
+        />
+      </ThemedView>
+
+      {/* Cuisines */}
+      <ThemedText style={styles.sectionTitle}>Cozinhas favoritas</ThemedText>
+      <ThemedView type="backgroundElement" style={styles.section}>
+        <ThemedText style={styles.subLabel}>Nacionalidades das receitas</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+          Suas cozinhas favoritas aparecem primeiro nas sugestões (não escondem as outras).
+        </ThemedText>
+        <ChipMultiSelect<CuisineTag>
+          options={CUISINE_OPTIONS}
+          values={settings.cuisines}
+          onChange={(v) => updateSettings({ cuisines: v })}
         />
       </ThemedView>
 

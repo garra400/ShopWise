@@ -1,4 +1,5 @@
-import { DietTag, Allergen, Recipe, Settings } from '@/types';
+import { DietTag, Allergen, CuisineTag, Recipe, Settings } from '@/types';
+import { resolveCanonicalId, getIngredient } from '@/utils/ingredients';
 
 /** Portuguese labels for diet tags */
 export const DIET_TAG_LABELS: Record<DietTag, string> = {
@@ -18,6 +19,47 @@ export const ALLERGEN_LABELS: Record<Allergen, string> = {
   soja: 'Soja',
   castanhas: 'Castanhas',
 };
+
+/** Portuguese labels for cuisines */
+export const CUISINE_LABELS: Record<CuisineTag, string> = {
+  brasileira: 'Brasileira',
+  italiana: 'Italiana',
+  mexicana: 'Mexicana',
+  asiatica: 'Asiática',
+  arabe: 'Árabe',
+  mediterranea: 'Mediterrânea',
+  americana: 'Americana',
+  indiana: 'Indiana',
+};
+
+/**
+ * Filter recipes by preferred cuisines.
+ * - Empty `cuisines` → no filtering (show all).
+ * - Otherwise keep recipes whose `cuisine` is in the set. Recipes with an
+ *   UNKNOWN cuisine (e.g. from an external API) are kept so we never hide
+ *   results we simply couldn't classify.
+ */
+export function filterByCuisine(recipes: Recipe[], cuisines: CuisineTag[]): Recipe[] {
+  if (cuisines.length === 0) return recipes;
+  return recipes.filter((r) => !r.cuisine || cuisines.includes(r.cuisine));
+}
+
+/**
+ * Remove recipes that contain any of the user's avoided ingredients.
+ * Each recipe ingredient is resolved to a canonical id (stored or on the fly)
+ * and compared against the avoid set.
+ */
+export function filterByAvoidIngredients(recipes: Recipe[], avoidIds: string[]): Recipe[] {
+  if (avoidIds.length === 0) return recipes;
+  const avoid = new Set(avoidIds);
+  return recipes.filter((recipe) => {
+    for (const ing of recipe.ingredients) {
+      const id = ing.canonicalId ?? resolveCanonicalId(ing.name);
+      if (id && avoid.has(id)) return false;
+    }
+    return true;
+  });
+}
 
 /**
  * Filter a list of recipes based on the user's diet preferences.
@@ -67,6 +109,11 @@ export function activeDietFilterSummary(settings: Settings): string {
   }
   for (const allergen of settings.allergens) {
     parts.push(`Sem ${ALLERGEN_LABELS[allergen]}`);
+  }
+  // Cuisines are a SOFT preference (they re-rank, not hide) — not listed here.
+  for (const id of settings.avoidIngredients) {
+    const label = getIngredient(id)?.name ?? id;
+    parts.push(`Sem ${label}`);
   }
   return parts.join(' · ');
 }

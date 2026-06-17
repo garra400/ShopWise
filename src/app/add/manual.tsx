@@ -6,6 +6,7 @@ import { goBack } from '@/utils/nav';
 import { useSettings } from '@/context/SettingsContext';
 import { DateInput } from '@/components/DateInput';
 import { Select } from '@/components/Select';
+import { IngredientPicker } from '@/components/IngredientPicker';
 import { Button } from '@/components/Button';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -31,6 +32,7 @@ export default function ManualAddScreen() {
   const today = format(new Date(), 'yyyy-MM-dd');
 
   const [name, setName] = useState('');
+  const [canonicalId, setCanonicalId] = useState<string | undefined>(undefined);
   const [category, setCategory] = useState('Outros');
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState(settings.defaultUnit);
@@ -53,6 +55,7 @@ export default function ManualAddScreen() {
     try {
       await addProduct({
         name: name.trim(),
+        canonicalId,
         category,
         quantity: quantity && !Number.isNaN(Number(quantity)) ? Number(quantity) : undefined,
         unit,
@@ -73,17 +76,19 @@ export default function ManualAddScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Nome */}
-      <View style={styles.field}>
+      {/* Nome / Ingrediente */}
+      <View style={[styles.field, styles.pickerField]}>
         <ThemedText style={styles.label}>Nome *</ThemedText>
-        <TextInput
-          style={[styles.input, { backgroundColor: theme.backgroundElement, color: theme.text, borderColor: errors.name ? '#D64545' : theme.border }]}
-          value={name}
-          onChangeText={setName}
-          placeholder="Ex: Leite Integral"
-          placeholderTextColor={theme.textSecondary}
+        <IngredientPicker
+          name={name}
+          canonicalId={canonicalId}
+          onChange={(next) => {
+            setName(next.name);
+            setCanonicalId(next.canonicalId);
+            if (next.category) setCategory(next.category);
+          }}
+          error={errors.name}
         />
-        {errors.name && <ThemedText style={styles.errorText}>{errors.name}</ThemedText>}
       </View>
 
       {/* Categoria */}
@@ -152,6 +157,9 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.one,
+  },
+  pickerField: {
+    zIndex: 10,
   },
   row: {
     flexDirection: 'row',

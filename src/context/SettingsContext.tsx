@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS: Settings = {
   dietRestrictions: '',
   dietTags: [],
   allergens: [],
+  cuisines: [],
+  avoidIngredients: [],
 };
 
 interface SettingsContextValue {

@@ -11,6 +11,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed-1',
     name: 'Leite Integral',
+    canonicalId: 'leite',
     category: 'Laticínios',
     purchaseDate: isoDate(-5),
     expiryDate: isoDate(60),
@@ -24,6 +25,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed-2',
     name: 'Iogurte',
+    canonicalId: 'iogurte',
     category: 'Laticínios',
     purchaseDate: isoDate(-10),
     expiryDate: isoDate(20),
@@ -37,6 +39,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed-3',
     name: 'Frango',
+    canonicalId: 'frango',
     category: 'Carnes',
     purchaseDate: isoDate(-2),
     expiryDate: isoDate(3),
@@ -50,6 +53,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed-4',
     name: 'Tomate',
+    canonicalId: 'tomate',
     category: 'Hortifruti',
     purchaseDate: isoDate(-7),
     expiryDate: isoDate(-2),
@@ -63,6 +67,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed-5',
     name: 'Arroz',
+    canonicalId: 'arroz',
     category: 'Mercearia',
     purchaseDate: isoDate(-30),
     expiryDate: isoDate(180),
@@ -76,6 +81,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed-6',
     name: 'Pão de Forma',
+    canonicalId: 'pao',
     category: 'Padaria',
     purchaseDate: isoDate(-3),
     expiryDate: isoDate(15),

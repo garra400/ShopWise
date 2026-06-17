@@ -12,6 +12,7 @@ create table if not exists public.products (
   id           text        primary key,
   user_id      uuid        not null default auth.uid() references auth.users(id) on delete cascade,
   name         text        not null,
+  canonical_id text        null,
   category     text        not null default '',
   purchase_date text       not null default '',
   expiry_date  text        not null default '',
@@ -23,6 +24,9 @@ create table if not exists public.products (
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
+
+-- Migration for tables created before canonical_id existed (safe to re-run)
+alter table public.products add column if not exists canonical_id text null;
 
 -- Index for fast per-user queries
 create index if not exists products_user_id_idx on public.products(user_id);
@@ -47,3 +51,39 @@ create policy "Users can update their own products"
 create policy "Users can delete their own products"
   on public.products for delete
   using (auth.uid() = user_id);
+
+-- =============================================================================
+-- Recipes — shared community catalog (public read, admin-only write)
+-- =============================================================================
+-- This table is the same for ALL users: everyone reads the same recipe library.
+-- Writes are NOT exposed via RLS, so only the dashboard / service-role key can
+-- add or edit recipes (run supabase_recipes_seed.sql to populate it).
+-- Ingredients/tags/allergens are stored as JSONB to mirror the app's Recipe
+-- model 1:1 (filtering and matching happen client-side).
+-- =============================================================================
+create table if not exists public.recipes (
+  id           text        primary key,
+  title        text        not null,
+  ingredients  jsonb       not null default '[]'::jsonb,  -- [{name, canonicalId, quantity, unit}]
+  instructions text        not null default '',
+  prep_time    integer     not null default 0,
+  difficulty   text        not null default 'easy',
+  tags         jsonb       not null default '[]'::jsonb,   -- DietTag[]
+  allergens    jsonb       not null default '[]'::jsonb,   -- Allergen[]
+  cuisine      text        null,                            -- CuisineTag
+  image        text        null,
+  source_url   text        null,
+  origin       text        not null default 'community',
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+-- Row Level Security: anyone (even anonymous) may READ; nobody may write via RLS.
+alter table public.recipes enable row level security;
+
+-- Migration for tables created before `cuisine` existed (safe to re-run)
+alter table public.recipes add column if not exists cuisine text null;
+
+create policy "Anyone can read recipes"
+  on public.recipes for select
+  using (true);

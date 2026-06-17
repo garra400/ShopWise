@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SettingsProvider, useSettings } from '@/context/SettingsContext';
 import { ProductsProvider } from '@/context/ProductsContext';
+import { FavoritesProvider } from '@/context/FavoritesContext';
 import { SyncProvider } from '@/context/SyncContext';
 import { ThemeContextProvider } from '@/context/ThemeContext';
 
@@ -44,7 +45,9 @@ export default function RootLayout() {
           <ProductsProvider>
             {/* SyncProvider must be inside ProductsProvider (uses useProducts) */}
             <SyncProvider>
-              <AppStack />
+              <FavoritesProvider>
+                <AppStack />
+              </FavoritesProvider>
             </SyncProvider>
           </ProductsProvider>
         </SettingsProvider>

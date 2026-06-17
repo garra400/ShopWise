@@ -40,6 +40,7 @@ export interface ProductRow {
   id: string;
   user_id: string;
   name: string;
+  canonical_id: string | null;
   category: string;
   purchase_date: string;
   expiry_date: string;
@@ -61,6 +62,7 @@ export function productToRow(p: Product, userId: string): ProductRow {
     id: p.id,
     user_id: userId,
     name: p.name,
+    canonical_id: p.canonicalId ?? null,
     category: p.category,
     purchase_date: p.purchaseDate,
     expiry_date: p.expiryDate,
@@ -78,6 +80,7 @@ export function rowToProduct(row: ProductRow): Product {
   return {
     id: row.id,
     name: row.name,
+    canonicalId: row.canonical_id ?? undefined,
     category: row.category,
     purchaseDate: row.purchase_date,
     expiryDate: row.expiry_date,

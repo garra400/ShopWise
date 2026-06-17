@@ -11,6 +11,19 @@ export const SPOONACULAR_API_KEY = process.env.EXPO_PUBLIC_SPOONACULAR_API_KEY ?
 export const hasSpoonacular = SPOONACULAR_API_KEY.length > 0;
 
 // ---------------------------------------------------------------------------
+// Pexels (optional recipe photos)
+// ---------------------------------------------------------------------------
+// Free API key from https://www.pexels.com/api/ (no credit card).
+// When present, recipes without their own image fetch a free stock photo by
+// title. Without it, recipes show a themed placeholder.
+// ---------------------------------------------------------------------------
+
+export const PEXELS_API_KEY = process.env.EXPO_PUBLIC_PEXELS_API_KEY ?? '';
+
+/** True only when a Pexels API key has been provided via env. */
+export const hasPexels = PEXELS_API_KEY.length > 0;
+
+// ---------------------------------------------------------------------------
 // Supabase (optional cloud sync)
 // ---------------------------------------------------------------------------
 // Create a FREE project at https://supabase.com (no credit card required),
