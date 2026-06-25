@@ -89,20 +89,25 @@ O app funciona sem isso (modo convidado). Para habilitar contas:
      `delete_my_account()`.
    - `supabase_recipes_seed.sql` — catálogo de receitas da comunidade.
    - `supabase_recipes_images.sql` — imagens curadas das receitas.
-3. **Confirmação de e-mail por código (OTP):**
-   - Authentication → Providers → **Email**: habilitado, **Confirm email = ON**.
-   - Authentication → Email Templates → **"Confirm signup"**: inclua o código do
-     usuário com `{{ .Token }}`. Exemplo:
-     ```html
-     <h2>Confirme seu e-mail</h2>
-     <p>Seu código do ShopWise é: <b style="font-size:24px;letter-spacing:3px">{{ .Token }}</b></p>
-     ```
-   - Sem o `{{ .Token }}` no template, **o código não chega** e a confirmação falha.
-   - Se preferir desligar a confirmação (Confirm email = OFF), o cadastro loga direto
-     (o app detecta e pula a tela de código).
-4. **Recuperação de senha (esqueci a senha):** o app usa o mesmo esquema de código.
-   Em Email Templates → **"Reset password"**, inclua também `{{ .Token }}` (o app pede
-   o código + a nova senha na tela "Recuperar senha").
+3. **Confirmação de e-mail por código (OTP) — opcional:**
+   - Authentication → Sign In / Providers → **Email**: **Confirm email = ON**.
+   - ⚠️ **Editar os templates de e-mail exige SMTP próprio.** O e-mail embutido do
+     Supabase só envia ~2/hora e **somente para e-mails da equipe do projeto**, e a
+     edição dos templates fica travada até configurar SMTP.
+   - Para o código por e-mail funcionar de verdade:
+     1. Crie um SMTP grátis (ex.: **Brevo** — 300/dia, valida remetente por e-mail;
+        ou **Resend**).
+     2. Authentication → **Emails → SMTP Settings** (`.../auth/smtp`) → **Enable custom
+        SMTP** e preencha host/port/usuário/senha/remetente. (Brevo: `smtp-relay.brevo.com`,
+        porta `587`.)
+     3. Com o SMTP salvo, os **Templates destravam** → em **"Confirm signup"** e
+        **"Reset password"** troque o link por `{{ .Token }}` (código de 6 dígitos):
+        ```html
+        <p>Seu código do ShopWise é: <b style="font-size:24px;letter-spacing:3px">{{ .Token }}</b></p>
+        ```
+   - **Sem nada disso:** deixe **Confirm email = OFF** — o app detecta e **pula a tela de
+     código** (cadastro loga direto). Contas, login e recuperação por código exigem o SMTP;
+     o resto funciona normalmente.
 
 ### Privacidade / LGPD (resumo)
 - Consentimento obrigatório no cadastro; guardamos só o **e-mail** e os itens da
