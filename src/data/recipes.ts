@@ -508,7 +508,7 @@ const LOCAL_IMAGES: Record<string, string> = {
   r3: 'https://images.pexels.com/photos/769969/pexels-photo-769969.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
   r4: 'https://images.pexels.com/photos/5840304/pexels-photo-5840304.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
   r5: 'https://images.pexels.com/photos/3908198/pexels-photo-3908198.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
-  r6: 'https://images.pexels.com/photos/16266737/pexels-photo-16266737.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r6: 'https://images.pexels.com/photos/14941252/pexels-photo-14941252.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
   r7: 'https://images.pexels.com/photos/19938618/pexels-photo-19938618.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
   r8: 'https://images.pexels.com/photos/28792769/pexels-photo-28792769.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
   r9: 'https://images.pexels.com/photos/6978234/pexels-photo-6978234.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
