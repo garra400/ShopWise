@@ -34,20 +34,25 @@ create index if not exists products_user_id_idx on public.products(user_id);
 -- Row Level Security ---------------------------------------------------------
 alter table public.products enable row level security;
 
--- Policies: authenticated users can only access their own rows
+-- Policies: authenticated users can only access their own rows.
+-- (drop-then-create keeps this script safe to re-run — CREATE POLICY has no IF NOT EXISTS.)
+drop policy if exists "Users can select their own products" on public.products;
 create policy "Users can select their own products"
   on public.products for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert their own products" on public.products;
 create policy "Users can insert their own products"
   on public.products for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update their own products" on public.products;
 create policy "Users can update their own products"
   on public.products for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can delete their own products" on public.products;
 create policy "Users can delete their own products"
   on public.products for delete
   using (auth.uid() = user_id);
@@ -90,6 +95,7 @@ alter table public.recipes add column if not exists title_en text null;
 alter table public.recipes add column if not exists instructions_en text null;
 alter table public.recipes add column if not exists servings integer null;
 
+drop policy if exists "Anyone can read recipes" on public.recipes;
 create policy "Anyone can read recipes"
   on public.recipes for select
   using (true);
