@@ -14,6 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { DietTag, Allergen, CuisineTag } from '@/types';
 import { DIET_TAG_LABELS, ALLERGEN_LABELS, CUISINE_LABELS } from '@/utils/diet';
+import { useT } from '@/i18n';
 
 const UNIT_OPTIONS = [
   { label: 'Unidade (un)', value: 'un' },
@@ -46,6 +47,7 @@ function SettingRow({ label, children }: { label: string; children: React.ReactN
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const t = useT();
   const { settings, updateSettings } = useSettings();
   const { reseedProducts, clearProducts } = useProducts();
   const { enabled, user, syncing, lastSyncAt, error, signIn, signUp, signOut, syncNow } = useSync();
@@ -108,14 +110,14 @@ export default function SettingsScreen() {
       contentContainerStyle={styles.content}
     >
       {/* Appearance */}
-      <ThemedText style={styles.sectionTitle}>Aparência</ThemedText>
+      <ThemedText style={styles.sectionTitle}>{t('settings.appearance')}</ThemedText>
       <ThemedView type="backgroundElement" style={styles.section}>
-        <SettingRow label="Tema">
+        <SettingRow label={t('settings.theme')}>
           <Segmented
             options={[
-              { label: 'Sistema', value: 'system' },
-              { label: 'Claro', value: 'light' },
-              { label: 'Escuro', value: 'dark' },
+              { label: t('settings.theme.system'), value: 'system' },
+              { label: t('settings.theme.light'), value: 'light' },
+              { label: t('settings.theme.dark'), value: 'dark' },
             ]}
             value={settings.themePreference}
             onChange={(v) => updateSettings({ themePreference: v as 'system' | 'light' | 'dark' })}
@@ -124,9 +126,9 @@ export default function SettingsScreen() {
       </ThemedView>
 
       {/* Preferences */}
-      <ThemedText style={styles.sectionTitle}>Preferências</ThemedText>
+      <ThemedText style={styles.sectionTitle}>{t('settings.preferences')}</ThemedText>
       <ThemedView type="backgroundElement" style={styles.section}>
-        <SettingRow label="Notificações">
+        <SettingRow label={t('settings.notifications')}>
           <Switch
             value={settings.notificationsEnabled}
             onValueChange={(v) => updateSettings({ notificationsEnabled: v })}
@@ -134,7 +136,7 @@ export default function SettingsScreen() {
           />
         </SettingRow>
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <SettingRow label="Idioma">
+        <SettingRow label={t('settings.language')}>
           <Segmented
             options={[
               { label: 'Português', value: 'pt' },
@@ -145,7 +147,18 @@ export default function SettingsScreen() {
           />
         </SettingRow>
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <SettingRow label="Unidade padrão">
+        <SettingRow label={t('settings.units')}>
+          <Segmented
+            options={[
+              { label: t('settings.units.metric'), value: 'metric' },
+              { label: t('settings.units.imperial'), value: 'imperial' },
+            ]}
+            value={settings.measurementSystem}
+            onChange={(v) => updateSettings({ measurementSystem: v as 'metric' | 'imperial' })}
+          />
+        </SettingRow>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow label={t('settings.defaultUnit')}>
           <Select
             options={UNIT_OPTIONS}
             value={settings.defaultUnit}
@@ -155,12 +168,12 @@ export default function SettingsScreen() {
       </ThemedView>
 
       {/* Diet & Allergies */}
-      <ThemedText style={styles.sectionTitle}>Dieta e Alergias</ThemedText>
+      <ThemedText style={styles.sectionTitle}>{t('settings.dietAllergies')}</ThemedText>
       <ThemedView type="backgroundElement" style={styles.section}>
         {/* Diet tag chips */}
-        <ThemedText style={styles.subLabel}>Preferências de dieta</ThemedText>
+        <ThemedText style={styles.subLabel}>{t('settings.dietPrefs')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-          Selecione as dietas que deseja seguir. As receitas serão filtradas de acordo.
+          {t('settings.dietPrefs.hint')}
         </ThemedText>
         <ChipMultiSelect<DietTag>
           options={DIET_TAG_OPTIONS}
@@ -171,9 +184,9 @@ export default function SettingsScreen() {
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
         {/* Allergen chips */}
-        <ThemedText style={styles.subLabel}>Alérgenos a evitar</ThemedText>
+        <ThemedText style={styles.subLabel}>{t('settings.allergens')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-          Receitas com os alérgenos selecionados serão removidas da lista.
+          {t('settings.allergens.hint')}
         </ThemedText>
         <ChipMultiSelect<Allergen>
           options={ALLERGEN_OPTIONS}
@@ -184,9 +197,9 @@ export default function SettingsScreen() {
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
         {/* Avoid ingredients */}
-        <ThemedText style={styles.subLabel}>Ingredientes que você evita</ThemedText>
+        <ThemedText style={styles.subLabel}>{t('settings.avoid')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-          Receitas que usam estes ingredientes não vão aparecer (ex: coentro, cebola).
+          {t('settings.avoid.hint')}
         </ThemedText>
         <IngredientMultiSelect
           values={settings.avoidIngredients}
@@ -196,11 +209,11 @@ export default function SettingsScreen() {
       </ThemedView>
 
       {/* Cuisines */}
-      <ThemedText style={styles.sectionTitle}>Cozinhas favoritas</ThemedText>
+      <ThemedText style={styles.sectionTitle}>{t('settings.cuisines')}</ThemedText>
       <ThemedView type="backgroundElement" style={styles.section}>
-        <ThemedText style={styles.subLabel}>Nacionalidades das receitas</ThemedText>
+        <ThemedText style={styles.subLabel}>{t('settings.cuisines.label')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-          Suas cozinhas favoritas aparecem primeiro nas sugestões (não escondem as outras).
+          {t('settings.cuisines.hint')}
         </ThemedText>
         <ChipMultiSelect<CuisineTag>
           options={CUISINE_OPTIONS}
@@ -210,7 +223,7 @@ export default function SettingsScreen() {
       </ThemedView>
 
       {/* Cloud sync / account */}
-      <ThemedText style={styles.sectionTitle}>Conta e Sincronização</ThemedText>
+      <ThemedText style={styles.sectionTitle}>{t('settings.account')}</ThemedText>
 
       {!enabled && (
         <ThemedView type="backgroundElement" style={styles.section}>
@@ -334,15 +347,15 @@ export default function SettingsScreen() {
       )}
 
       {/* Data management */}
-      <ThemedText style={styles.sectionTitle}>Dados</ThemedText>
+      <ThemedText style={styles.sectionTitle}>{t('settings.data')}</ThemedText>
       <View style={styles.dataButtons}>
         <Button
-          title="Restaurar dados de exemplo"
+          title={t('settings.data.reseed')}
           onPress={reseedProducts}
           variant="secondary"
         />
         <Button
-          title="Limpar todos os produtos"
+          title={t('settings.data.clear')}
           onPress={handleClearProducts}
           variant="danger"
         />

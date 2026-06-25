@@ -18,7 +18,8 @@ const CATEGORIES = [
   'Bebidas', 'Mercearia', 'Limpeza', 'Outros',
 ].map((c) => ({ label: c, value: c }));
 
-const UNITS = ['un', 'kg', 'g', 'L', 'ml'].map((u) => ({ label: u, value: u }));
+const UNITS_METRIC = ['un', 'kg', 'g', 'L', 'ml'].map((u) => ({ label: u, value: u }));
+const UNITS_IMPERIAL = ['un', 'lb', 'oz', 'gal', 'fl oz', 'cup'].map((u) => ({ label: u, value: u }));
 
 interface FormErrors {
   name?: string;
@@ -118,7 +119,7 @@ export default function ManualAddScreen() {
         </View>
         <View style={[styles.field, { flex: 1 }]}>
           <ThemedText style={styles.label}>Unidade</ThemedText>
-          <Select options={UNITS} value={unit} onChange={setUnit} />
+          <Select options={settings.measurementSystem === 'imperial' ? UNITS_IMPERIAL : UNITS_METRIC} value={unit} onChange={setUnit} />
         </View>
       </View>
 

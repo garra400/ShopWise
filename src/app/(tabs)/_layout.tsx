@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
+import { useT } from '@/i18n';
 
 export default function TabsLayout() {
   const theme = useTheme();
+  const t = useT();
 
   return (
     <Tabs
@@ -18,7 +20,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Despensa',
+          title: t('tab.pantry'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -27,7 +29,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="expiring"
         options={{
-          title: 'Para Vencer',
+          title: t('tab.expiring'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time" size={size} color={color} />
           ),
@@ -36,7 +38,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="recipes"
         options={{
-          title: 'Receitas',
+          title: t('tab.recipes'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="restaurant" size={size} color={color} />
           ),
@@ -45,7 +47,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Config',
+          title: t('tab.settings'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),

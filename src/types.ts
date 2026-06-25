@@ -83,6 +83,7 @@ export interface Settings {
   themePreference: 'system' | 'light' | 'dark';
   notificationsEnabled: boolean;
   language: 'pt' | 'en';
+  measurementSystem: 'metric' | 'imperial';
   defaultUnit: string;
   dietTags: DietTag[];      // structured diet preferences
   allergens: Allergen[];    // allergens to avoid

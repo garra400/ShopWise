@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: Settings = {
   themePreference: 'system',
   notificationsEnabled: true,
   language: 'pt',
+  measurementSystem: 'metric',
   defaultUnit: 'un',
   dietTags: [],
   allergens: [],
