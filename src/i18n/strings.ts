@@ -145,6 +145,19 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     'settings.clear.confirm': 'Tem certeza que deseja remover todos os produtos?',
     'settings.clear.title': 'Limpar produtos',
 
+    // Account / LGPD
+    'account.consent': 'Li e aceito a Política de Privacidade e o uso dos meus dados conforme a LGPD.',
+    'account.consentRequired': 'Aceite a política de privacidade para criar a conta.',
+    'account.privacyNote': 'Guardamos apenas seu e-mail e os itens da sua despensa, para sincronizar entre aparelhos. Cada conta vê só os próprios dados, e você pode excluí-los quando quiser.',
+    'account.otpTitle': 'Confirme seu e-mail',
+    'account.otpHint': 'Enviamos um código para {email}. Digite-o abaixo para confirmar.',
+    'account.otpPlaceholder': 'Código de 6 dígitos',
+    'account.otpConfirm': 'Confirmar código',
+    'account.otpResend': 'Reenviar código',
+    'account.delete': 'Excluir minha conta e dados',
+    'account.deleteTitle': 'Excluir conta',
+    'account.deleteConfirm': 'Isto apaga sua conta e todos os seus dados da nuvem. A ação é permanente. Continuar?',
+
     // Add menu
     'addmenu.how': 'Como você quer adicionar?',
     'addmenu.manual': 'Inserir manualmente',
@@ -384,6 +397,19 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     'settings.signout': 'Sign out',
     'settings.clear.confirm': 'Are you sure you want to remove all products?',
     'settings.clear.title': 'Clear products',
+
+    // Account / LGPD
+    'account.consent': 'I have read and accept the Privacy Policy and the use of my data per data-protection law.',
+    'account.consentRequired': 'Please accept the privacy policy to create an account.',
+    'account.privacyNote': 'We only store your email and your pantry items, to sync across devices. Each account sees only its own data, and you can delete it anytime.',
+    'account.otpTitle': 'Confirm your email',
+    'account.otpHint': 'We sent a code to {email}. Enter it below to confirm.',
+    'account.otpPlaceholder': '6-digit code',
+    'account.otpConfirm': 'Confirm code',
+    'account.otpResend': 'Resend code',
+    'account.delete': 'Delete my account and data',
+    'account.deleteTitle': 'Delete account',
+    'account.deleteConfirm': 'This deletes your account and all your cloud data. This action is permanent. Continue?',
 
     // Add menu
     'addmenu.how': 'How do you want to add?',

@@ -23,7 +23,7 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { hasSupabase } from '@/config/integrations';
 import { getSupabase, productToRow, rowToProduct, ProductRow } from '@/services/supabase';
 import { useProducts } from '@/context/ProductsContext';
-import { loadLastSyncAt, saveLastSyncAt } from '@/services/storage';
+import { loadLastSyncAt, saveLastSyncAt, clearProductsStore } from '@/services/storage';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -47,10 +47,22 @@ interface SyncContextValue {
   lastSyncAt: string | null;
   /** Last error message (pt-BR), or null. */
   error: string | null;
+  /** True after sign-up when the user must enter the e-mail confirmation code. */
+  awaitingConfirmation: boolean;
+  /** The e-mail awaiting confirmation (for the OTP screen), or null. */
+  pendingEmail: string | null;
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string): Promise<void>;
+  /** Verify the 6-digit code e-mailed after sign-up. */
+  verifyOtp(token: string): Promise<void>;
+  /** Re-send the confirmation code to the pending e-mail. */
+  resendOtp(): Promise<void>;
+  /** Abandon the pending confirmation (back to the sign-in form). */
+  cancelConfirmation(): void;
   signOut(): Promise<void>;
   syncNow(): Promise<void>;
+  /** Delete the account and all its data (LGPD right to erasure). */
+  deleteAccount(): Promise<void>;
 }
 
 const NO_OP_CONTEXT: SyncContextValue = {
@@ -60,10 +72,16 @@ const NO_OP_CONTEXT: SyncContextValue = {
   syncing: false,
   lastSyncAt: null,
   error: null,
+  awaitingConfirmation: false,
+  pendingEmail: null,
   signIn: async () => {},
   signUp: async () => {},
+  verifyOtp: async () => {},
+  resendOtp: async () => {},
+  cancelConfirmation: () => {},
   signOut: async () => {},
   syncNow: async () => {},
+  deleteAccount: async () => {},
 };
 
 const SyncContext = createContext<SyncContextValue>(NO_OP_CONTEXT);
@@ -86,6 +104,12 @@ function friendlyAuthError(message: string): string {
   if (lower.includes('password') && lower.includes('weak')) {
     return 'Senha muito fraca. Use pelo menos 6 caracteres.';
   }
+  if (lower.includes('expired') || (lower.includes('invalid') && (lower.includes('token') || lower.includes('otp') || lower.includes('code')))) {
+    return 'Código inválido ou expirado. Peça um novo.';
+  }
+  if (lower.includes('rate limit') || lower.includes('too many')) {
+    return 'Muitas tentativas. Aguarde um pouco e tente de novo.';
+  }
   if (lower.includes('network') || lower.includes('fetch')) {
     return 'Erro de conexão. Verifique sua internet.';
   }
@@ -97,17 +121,23 @@ function friendlyAuthError(message: string): string {
 // ---------------------------------------------------------------------------
 
 function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
-  const { products, mergeRemoteProducts } = useProducts();
+  const { products, mergeRemoteProducts, setActiveScope } = useProducts();
 
   const [user, setUser] = useState<SyncUser | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   // Refs to avoid stale-closure issues in debounced callbacks.
   const userRef = useRef<SyncUser | null>(null);
   userRef.current = user;
+
+  // Keep the latest scope-switcher reachable from the once-only auth listener.
+  const setActiveScopeRef = useRef(setActiveScope);
+  setActiveScopeRef.current = setActiveScope;
 
   const productsRef = useRef(products);
   productsRef.current = products;
@@ -189,10 +219,49 @@ function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
     const sb = getSupabase();
     if (!sb) return;
     setError(null);
-    const { error: authError } = await sb.auth.signUp({ email, password });
+    const { data, error: authError } = await sb.auth.signUp({ email, password });
     if (authError) {
       setError(friendlyAuthError(authError.message));
+      return;
     }
+    // With e-mail confirmation ON, no session is returned yet — ask for the code.
+    // (If confirmation is OFF, a session comes back and onAuthStateChange signs in.)
+    if (!data.session) {
+      setPendingEmail(email);
+      setAwaitingConfirmation(true);
+    }
+  }, []);
+
+  const verifyOtp = useCallback(async (token: string) => {
+    const sb = getSupabase();
+    if (!sb || !pendingEmail) return;
+    setError(null);
+    const { error: vErr } = await sb.auth.verifyOtp({
+      email: pendingEmail,
+      token: token.trim(),
+      type: 'signup',
+    });
+    if (vErr) {
+      setError(friendlyAuthError(vErr.message));
+      return;
+    }
+    setAwaitingConfirmation(false);
+    setPendingEmail(null);
+    // onAuthStateChange (SIGNED_IN) sets the user and migrates the guest pantry.
+  }, [pendingEmail]);
+
+  const resendOtp = useCallback(async () => {
+    const sb = getSupabase();
+    if (!sb || !pendingEmail) return;
+    setError(null);
+    const { error: rErr } = await sb.auth.resend({ type: 'signup', email: pendingEmail });
+    if (rErr) setError(friendlyAuthError(rErr.message));
+  }, [pendingEmail]);
+
+  const cancelConfirmation = useCallback(() => {
+    setAwaitingConfirmation(false);
+    setPendingEmail(null);
+    setError(null);
   }, []);
 
   const signOut = useCallback(async () => {
@@ -200,7 +269,27 @@ function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
     if (!sb) return;
     setError(null);
     await sb.auth.signOut();
-    // onAuthStateChange will clear `user`.
+    // onAuthStateChange will clear `user` and switch back to the guest pantry.
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    const sb = getSupabase();
+    const u = userRef.current;
+    if (!sb || !u) return;
+    setError(null);
+    try {
+      // Preferred: server-side erasure of the auth user + their data (LGPD).
+      const { error: rpcError } = await sb.rpc('delete_my_account');
+      if (rpcError) {
+        // Fallback when the RPC isn't installed: at least delete the data rows.
+        await sb.from('products').delete().eq('user_id', u.id);
+      }
+    } catch {
+      // ignore — we still sign out and wipe local below
+    } finally {
+      await clearProductsStore(u.id); // remove this account's local cached pantry
+      await sb.auth.signOut(); // → onAuthStateChange → guest scope
+    }
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -226,6 +315,8 @@ function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
         const u = { id: session.user.id, email: session.user.email ?? undefined };
         setUser(u);
         userRef.current = u;
+        // Session restore (app reopen): load this account's pantry, no migration.
+        void setActiveScopeRef.current(u.id);
       }
       setInitializing(false);
     });
@@ -238,14 +329,17 @@ function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
           userRef.current = u;
           // Sync once on sign-in (not on every token refresh).
           if (_event === 'SIGNED_IN') {
-            // Slight delay so state settles before the async call.
+            // Move the guest pantry into the account on first sign-in, then sync.
+            void setActiveScopeRef.current(u.id, { migrate: true });
             setTimeout(() => {
               void syncNow();
-            }, 200);
+            }, 300);
           }
         } else {
           setUser(null);
           userRef.current = null;
+          // Signed out → back to the guest pantry.
+          void setActiveScopeRef.current('guest');
         }
       }
     );
@@ -331,10 +425,16 @@ function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
         syncing,
         lastSyncAt,
         error,
+        awaitingConfirmation,
+        pendingEmail,
         signIn,
         signUp,
+        verifyOtp,
+        resendOtp,
+        cancelConfirmation,
         signOut,
         syncNow,
+        deleteAccount,
       }}
     >
       {children}

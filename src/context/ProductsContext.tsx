@@ -6,13 +6,28 @@ import React, {
   useCallback,
 } from 'react';
 import { Product } from '@/types';
-import { loadProducts, saveProducts, hasSeeded, markSeeded } from '@/services/storage';
+import {
+  loadProducts,
+  saveProducts,
+  hasSeeded,
+  markSeeded,
+  clearProductsStore,
+  migrateLegacyToGuest,
+} from '@/services/storage';
 import { SEED_PRODUCTS } from '@/data/seed';
 import { resolveCanonicalId } from '@/utils/ingredients';
 
 interface ProductsContextValue {
   products: Product[];
   loading: boolean;
+  /** Current storage scope: the signed-in user id, or 'guest'. */
+  scope: string;
+  /**
+   * Switch the active pantry scope (called by the auth layer on sign in/out).
+   * With `{ migrate: true }` (used on first sign-in), a non-empty guest pantry
+   * is moved into the account scope so nothing is lost.
+   */
+  setActiveScope: (scope: string, opts?: { migrate?: boolean }) => Promise<void>;
   addProduct: (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   addProducts: (list: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>[]) => Promise<void>;
   updateProduct: (id: string, patch: Partial<Product>) => Promise<void>;
@@ -35,6 +50,8 @@ interface ProductsContextValue {
 const ProductsContext = createContext<ProductsContextValue>({
   products: [],
   loading: true,
+  scope: 'guest',
+  setActiveScope: async () => {},
   addProduct: async () => {},
   addProducts: async () => {},
   updateProduct: async () => {},
@@ -54,25 +71,58 @@ function makeId(): string {
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  // Active pantry scope: the signed-in user id, or 'guest' when not signed in.
+  const [scope, setScope] = useState<string>('guest');
 
   useEffect(() => {
-    Promise.all([loadProducts(), hasSeeded()]).then(([stored, seeded]) => {
+    (async () => {
+      await migrateLegacyToGuest();
+      const [stored, seeded] = await Promise.all([loadProducts('guest'), hasSeeded('guest')]);
       if (stored.length === 0 && !seeded) {
-        // First run only — seed with example data (won't re-seed after a manual clear)
+        // First run only — seed the GUEST pantry with example data.
+        // Accounts are never seeded: they start from their own cloud data.
         setProducts(SEED_PRODUCTS);
-        saveProducts(SEED_PRODUCTS);
-        markSeeded();
+        saveProducts('guest', SEED_PRODUCTS);
+        markSeeded('guest');
       } else {
         setProducts(stored);
       }
       setLoading(false);
-    });
+    })();
   }, []);
 
-  const persist = useCallback(async (list: Product[]) => {
-    setProducts(list);
-    await saveProducts(list);
-  }, []);
+  const persist = useCallback(
+    async (list: Product[]) => {
+      setProducts(list);
+      await saveProducts(scope, list);
+    },
+    [scope]
+  );
+
+  const setActiveScope = useCallback(
+    async (newScope: string, opts?: { migrate?: boolean }) => {
+      if (newScope === scope) return;
+
+      // First sign-in with a non-empty guest pantry → move it into the account.
+      if (opts?.migrate && scope === 'guest' && newScope !== 'guest' && products.length > 0) {
+        const accountExisting = await loadProducts(newScope);
+        const byId = new Map(accountExisting.map((p) => [p.id, p]));
+        for (const g of products) if (!byId.has(g.id)) byId.set(g.id, g);
+        const merged = Array.from(byId.values());
+        await saveProducts(newScope, merged);
+        await clearProductsStore('guest'); // the data lives in the account now
+        setScope(newScope);
+        setProducts(merged);
+        return;
+      }
+
+      // Plain switch (sign-out, or session restore): load the target pantry.
+      const list = await loadProducts(newScope);
+      setScope(newScope);
+      setProducts(list);
+    },
+    [scope, products]
+  );
 
   const addProduct = useCallback(
     async (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -195,6 +245,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       value={{
         products,
         loading,
+        scope,
+        setActiveScope,
         addProduct,
         addProducts,
         updateProduct,

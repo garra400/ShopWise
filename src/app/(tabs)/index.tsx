@@ -108,7 +108,7 @@ export default function HomeScreen() {
             { color: expiringCount + atRiskCount + expiredCount === 0 ? StatusColors.good : StatusColors.at_risk },
           ]}
         >
-          {expiringCount + atRiskCount === 0
+          {expiringCount + atRiskCount + expiredCount === 0
             ? t('home.allGood')
             : t('home.summaryLine', { e: expiringCount, r: atRiskCount })}
         </ThemedText>

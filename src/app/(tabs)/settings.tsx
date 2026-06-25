@@ -1,4 +1,5 @@
-import { View, TextInput, Switch, ScrollView, StyleSheet, Alert, Platform, ActivityIndicator } from 'react-native';
+import { View, TextInput, Switch, ScrollView, StyleSheet, Alert, Platform, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
 import { useSettings } from '@/context/SettingsContext';
 import { useProducts } from '@/context/ProductsContext';
@@ -32,7 +33,11 @@ export default function SettingsScreen() {
   const { settings, updateSettings } = useSettings();
   const lang = settings.language === 'en' ? 'en' : 'pt';
   const { reseedProducts, clearProducts } = useProducts();
-  const { enabled, user, syncing, lastSyncAt, error, signIn, signUp, signOut, syncNow } = useSync();
+  const {
+    enabled, user, syncing, lastSyncAt, error,
+    awaitingConfirmation, pendingEmail,
+    signIn, signUp, verifyOtp, resendOtp, cancelConfirmation, signOut, syncNow, deleteAccount,
+  } = useSync();
 
   const UNIT_OPTIONS = useMemo(() => unitOptions(settings.measurementSystem, lang), [settings.measurementSystem, lang]);
   const DIET_TAG_OPTIONS = useMemo(() => dietTagEntries(lang).map(([value, label]) => ({ value, label })), [lang]);
@@ -41,6 +46,8 @@ export default function SettingsScreen() {
 
   const [syncEmail, setSyncEmail] = useState('');
   const [syncPassword, setSyncPassword] = useState('');
+  const [syncCode, setSyncCode] = useState('');
+  const [consent, setConsent] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
 
   function handleClearProducts() {
@@ -70,9 +77,42 @@ export default function SettingsScreen() {
 
   async function handleSignUp() {
     if (!syncEmail.trim() || !syncPassword) return;
+    if (!consent) {
+      const msg = t('account.consentRequired');
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert(t('settings.createAccount'), msg);
+      return;
+    }
     setAuthLoading(true);
     await signUp(syncEmail.trim(), syncPassword);
     setAuthLoading(false);
+  }
+
+  async function handleVerifyOtp() {
+    if (!syncCode.trim()) return;
+    setAuthLoading(true);
+    await verifyOtp(syncCode.trim());
+    setAuthLoading(false);
+    setSyncCode('');
+  }
+
+  async function handleResendOtp() {
+    setAuthLoading(true);
+    await resendOtp();
+    setAuthLoading(false);
+  }
+
+  function handleDeleteAccount() {
+    const msg = t('account.deleteConfirm');
+    const apply = () => { void deleteAccount(); };
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(msg)) apply();
+      return;
+    }
+    Alert.alert(t('account.deleteTitle'), msg, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: apply },
+    ]);
   }
 
   function formatLastSync(iso: string | null): string {
@@ -141,7 +181,14 @@ export default function SettingsScreen() {
               { label: t('settings.units.imperial'), value: 'imperial' },
             ]}
             value={settings.measurementSystem}
-            onChange={(v) => updateSettings({ measurementSystem: v as 'metric' | 'imperial' })}
+            onChange={(v) => {
+              const sys = v as 'metric' | 'imperial';
+              const valid = unitOptions(sys, lang).map((o) => o.value);
+              updateSettings({
+                measurementSystem: sys,
+                ...(valid.includes(settings.defaultUnit) ? {} : { defaultUnit: 'un' }),
+              });
+            }}
           />
         </SettingRow>
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
@@ -236,7 +283,46 @@ export default function SettingsScreen() {
         </ThemedView>
       )}
 
-      {enabled && !user && (
+      {/* Email confirmation (OTP) step */}
+      {enabled && !user && awaitingConfirmation && (
+        <ThemedView type="backgroundElement" style={styles.section}>
+          <ThemedText style={styles.subLabel}>{t('account.otpTitle')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+            {t('account.otpHint', { email: pendingEmail ?? '' })}
+          </ThemedText>
+          {!!error && (
+            <ThemedText type="small" style={[styles.errorText, { color: '#D64545' }]}>
+              {error}
+            </ThemedText>
+          )}
+          <TextInput
+            style={[
+              styles.authInput,
+              { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, letterSpacing: 4 },
+            ]}
+            placeholder={t('account.otpPlaceholder')}
+            placeholderTextColor={theme.textSecondary}
+            value={syncCode}
+            onChangeText={setSyncCode}
+            keyboardType="number-pad"
+            autoComplete="one-time-code"
+            editable={!authLoading}
+          />
+          <Button
+            title={t('account.otpConfirm')}
+            onPress={handleVerifyOtp}
+            loading={authLoading}
+            disabled={!syncCode.trim()}
+          />
+          <View style={styles.authButtons}>
+            <Button title={t('account.otpResend')} onPress={handleResendOtp} variant="secondary" disabled={authLoading} style={styles.authButton} />
+            <Button title={t('common.cancel')} onPress={cancelConfirmation} variant="secondary" disabled={authLoading} style={styles.authButton} />
+          </View>
+        </ThemedView>
+      )}
+
+      {/* Sign in / create account */}
+      {enabled && !user && !awaitingConfirmation && (
         <ThemedView type="backgroundElement" style={styles.section}>
           <ThemedText style={styles.subLabel}>{t('settings.signin')}</ThemedText>
           {!!error && (
@@ -271,6 +357,19 @@ export default function SettingsScreen() {
             autoComplete="password"
             editable={!authLoading}
           />
+
+          {/* LGPD consent — required to create an account */}
+          <TouchableOpacity style={styles.consentRow} onPress={() => setConsent((v) => !v)} activeOpacity={0.7}>
+            <Ionicons
+              name={consent ? 'checkbox' : 'square-outline'}
+              size={22}
+              color={consent ? theme.primary : theme.textSecondary}
+            />
+            <ThemedText type="small" themeColor="textSecondary" style={styles.consentText}>
+              {t('account.consent')}
+            </ThemedText>
+          </TouchableOpacity>
+
           <View style={styles.authButtons}>
             <Button
               title={t('settings.enter')}
@@ -284,10 +383,14 @@ export default function SettingsScreen() {
               onPress={handleSignUp}
               variant="secondary"
               loading={authLoading}
-              disabled={!syncEmail.trim() || !syncPassword}
+              disabled={!syncEmail.trim() || !syncPassword || !consent}
               style={styles.authButton}
             />
           </View>
+
+          <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+            {t('account.privacyNote')}
+          </ThemedText>
         </ThemedView>
       )}
 
@@ -327,6 +430,13 @@ export default function SettingsScreen() {
             title={t('settings.signout')}
             onPress={signOut}
             variant="secondary"
+            disabled={syncing}
+          />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <Button
+            title={t('account.delete')}
+            onPress={handleDeleteAccount}
+            variant="danger"
             disabled={syncing}
           />
         </ThemedView>
@@ -375,6 +485,16 @@ const styles = StyleSheet.create({
   },
   hint: {
     marginBottom: Spacing.two,
+  },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  consentText: {
+    flex: 1,
+    lineHeight: 18,
   },
   section: {
     borderRadius: Spacing.two,
