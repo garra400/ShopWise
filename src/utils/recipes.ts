@@ -82,17 +82,24 @@ export function sortedRecipeMatches(matches: RecipeMatch[]): RecipeMatch[] {
   });
 }
 
+/** True when the user has ALL ingredients of the recipe (can cook it right now). */
+export function canMakeNow(match: RecipeMatch): boolean {
+  return match.totalCount > 0 && match.matchedCount >= match.totalCount;
+}
+
 /**
- * Soft-ranking score for a recipe given the user's taste profile.
- * Higher = more relevant. Urgency (expiry) dominates, then preferred cuisine,
- * then how much of the recipe the user already has at home.
+ * Soft-ranking score for a recipe. The core goal of the app: surface recipes the
+ * user can actually make now (has ALL ingredients) and will enjoy.
+ * Priority: has-all-ingredients ≫ how much they already have ≫ uses expiring
+ * items ≫ preferred cuisine.
  */
 export function recipeScore(match: RecipeMatch, preferredCuisines: CuisineTag[]): number {
   let score = 0;
-  if (match.hasAtRisk) score += 1000;
-  if (match.hasExpiringSoon) score += 500;
-  if (match.recipe.cuisine && preferredCuisines.includes(match.recipe.cuisine)) score += 200;
-  score += match.matchPercentage; // 0..100
+  if (canMakeNow(match)) score += 10000;          // has EVERYTHING — top priority
+  score += match.matchPercentage * 10;            // 0..1000 — closer to complete ranks higher
+  if (match.hasAtRisk) score += 500;              // use what's about to spoil
+  if (match.hasExpiringSoon) score += 200;
+  if (match.recipe.cuisine && preferredCuisines.includes(match.recipe.cuisine)) score += 100; // taste tiebreaker
   return score;
 }
 

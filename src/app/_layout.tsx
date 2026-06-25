@@ -26,10 +26,10 @@ function AppStack() {
       <ThemeProvider value={navTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="add/index" options={{ title: 'Adicionar Produto', presentation: 'modal' }} />
-          <Stack.Screen name="add/manual" options={{ title: 'Adicionar Manualmente' }} />
-          <Stack.Screen name="add/scan" options={{ title: 'Escanear Comprovante' }} />
-          <Stack.Screen name="add/qrcode" options={{ title: 'Ler QR da Nota Fiscal' }} />
+          <Stack.Screen name="add/index" options={{ title: 'Adicionar produto', presentation: 'modal' }} />
+          <Stack.Screen name="add/manual" options={{ title: 'Adicionar manualmente' }} />
+          <Stack.Screen name="add/scan" options={{ title: 'Escanear comprovante' }} />
+          <Stack.Screen name="add/qrcode" options={{ title: 'Ler QR da nota fiscal' }} />
           <Stack.Screen name="product/[id]" options={{ title: 'Produto' }} />
           <Stack.Screen name="recipe/[id]" options={{ title: 'Receita' }} />
         </Stack>

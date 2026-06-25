@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, TextInput, StyleSheet, ScrollView } from 'react-native';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
+import { suggestedUnit, suggestedShelfLifeDays } from '@/utils/ingredients';
 import { useProducts } from '@/context/ProductsContext';
 import { goBack } from '@/utils/nav';
 import { useSettings } from '@/context/SettingsContext';
@@ -86,6 +87,11 @@ export default function ManualAddScreen() {
             setName(next.name);
             setCanonicalId(next.canonicalId);
             if (next.category) setCategory(next.category);
+            // Auto-suggest the natural unit + a typical expiry for recognized items
+            if (next.canonicalId) {
+              setUnit(suggestedUnit(next.canonicalId));
+              setExpiryDate(format(addDays(new Date(), suggestedShelfLifeDays(next.canonicalId)), 'yyyy-MM-dd'));
+            }
           }}
           error={errors.name}
         />

@@ -7,7 +7,14 @@ import { ReceiptItem } from '@/services/ocr';
 /** Lines that are purely numeric/symbol noise or too short (< 3 letters) */
 const NOISE_KEYWORDS = [
   'TOTAL', 'SUBTOTAL', 'TROCO', 'CNPJ', 'CPF', 'CUPOM', 'FISCAL',
-  'VALOR', 'DINHEIRO', 'CARTAO', 'ICMS', 'R\\$', '%',
+  'VALOR', 'DINHEIRO', 'CARTAO', 'CREDITO', 'DEBITO', 'PIX', 'ICMS', 'PIS',
+  'COFINS', 'TRIBUTOS?', 'IMPOSTO', 'R\\$', '%',
+  // store / header / footer noise
+  'LTDA', 'EPP', '\\bME\\b', '\\bIE\\b', 'INSCRICAO', 'ENDERECO', 'AVENIDA', '\\bAV\\b',
+  '\\bRUA\\b', '\\bTEL\\b', 'FONE', 'EMISSAO', 'PROTOCOLO', 'CHAVE', 'ACESSO',
+  'CONSUMIDOR', 'NFC-?E', 'NF-?E', '\\bSAT\\b', 'SERIE', 'CAIXA', 'OPERADOR',
+  'OBRIGAD', 'VOLTE SEMPRE', 'DESCONTO', 'ACRESCIMO', 'PAGAMENTO', 'PAGO',
+  'QTD', 'QTDE', 'UNIT', 'DESCRICAO', 'ITEM', '\\bVL\\b',
 ];
 const NOISE_REGEX = new RegExp(NOISE_KEYWORDS.join('|'), 'i');
 

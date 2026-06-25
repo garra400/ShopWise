@@ -84,7 +84,6 @@ export interface Settings {
   notificationsEnabled: boolean;
   language: 'pt' | 'en';
   defaultUnit: string;
-  dietRestrictions: string; // free text
   dietTags: DietTag[];      // structured diet preferences
   allergens: Allergen[];    // allergens to avoid
   cuisines: CuisineTag[];   // preferred cuisines (empty = show all)

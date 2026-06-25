@@ -288,5 +288,25 @@ const LOCAL_RECIPES: Recipe[] = [
   },
 ];
 
-/** All local recipes default to Brazilian cuisine. */
-export const RECIPES: Recipe[] = LOCAL_RECIPES.map((r) => ({ cuisine: 'brasileira', ...r }));
+/** Curated relevant photos (Pexels) for the local recipes. */
+const LOCAL_IMAGES: Record<string, string> = {
+  r1: 'https://images.pexels.com/photos/19141541/pexels-photo-19141541.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r2: 'https://images.pexels.com/photos/31261430/pexels-photo-31261430.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r3: 'https://images.pexels.com/photos/28936956/pexels-photo-28936956.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r4: 'https://images.pexels.com/photos/15801901/pexels-photo-15801901.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r5: 'https://images.pexels.com/photos/4451838/pexels-photo-4451838.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r6: 'https://images.pexels.com/photos/5292918/pexels-photo-5292918.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r7: 'https://images.pexels.com/photos/37322776/pexels-photo-37322776.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r8: 'https://images.pexels.com/photos/12795421/pexels-photo-12795421.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r9: 'https://images.pexels.com/photos/9219098/pexels-photo-9219098.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r10: 'https://images.pexels.com/photos/29481840/pexels-photo-29481840.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r11: 'https://images.pexels.com/photos/36852245/pexels-photo-36852245.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r12: 'https://images.pexels.com/photos/34448992/pexels-photo-34448992.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r13: 'https://images.pexels.com/photos/30855418/pexels-photo-30855418.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r14: 'https://images.pexels.com/photos/5645190/pexels-photo-5645190.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r15: 'https://images.pexels.com/photos/36715445/pexels-photo-36715445.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  r16: 'https://images.pexels.com/photos/18142614/pexels-photo-18142614.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+};
+
+/** All local recipes default to Brazilian cuisine, with curated photos. */
+export const RECIPES: Recipe[] = LOCAL_RECIPES.map((r) => ({ cuisine: 'brasileira', ...r, image: LOCAL_IMAGES[r.id] ?? r.image }));

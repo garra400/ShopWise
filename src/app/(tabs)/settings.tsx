@@ -193,25 +193,6 @@ export default function SettingsScreen() {
           onChange={(v) => updateSettings({ avoidIngredients: v })}
         />
 
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-        {/* Free-text field (kept for backwards compatibility) */}
-        <ThemedText style={styles.subLabel}>Outras restrições</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>
-          Descreva restrições alimentares adicionais
-        </ThemedText>
-        <TextInput
-          style={[
-            styles.textArea,
-            { backgroundColor: theme.background, color: theme.text, borderColor: theme.border },
-          ]}
-          multiline
-          numberOfLines={3}
-          value={settings.dietRestrictions}
-          onChangeText={(v) => updateSettings({ dietRestrictions: v })}
-          placeholder="Ex: sem glúten, intolerância à lactose..."
-          placeholderTextColor={theme.textSecondary}
-        />
       </ThemedView>
 
       {/* Cuisines */}

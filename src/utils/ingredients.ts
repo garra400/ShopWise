@@ -45,6 +45,43 @@ export function suggestedShelfLifeDays(id?: string): number {
   return SHELF_LIFE_BY_ID[ing.id] ?? SHELF_LIFE_BY_CATEGORY[ing.category] ?? 30;
 }
 
+// ---------------------------------------------------------------------------
+// Default unit per ingredient (leite → L, arroz → kg, pimenta → un, ...)
+// ---------------------------------------------------------------------------
+
+const UNIT_BY_CATEGORY: Record<IngredientCategory, string> = {
+  Laticínios: 'un',
+  Hortifruti: 'un',
+  Carnes: 'kg',
+  Padaria: 'un',
+  Bebidas: 'L',
+  Mercearia: 'un',
+  Outros: 'un',
+};
+
+const UNIT_BY_ID: Record<string, string> = {
+  // Líquidos (L)
+  leite: 'L', 'leite-coco': 'L', 'leite-vegetal': 'L', suco: 'L', agua: 'L', refrigerante: 'L', cafe: 'L', cha: 'L',
+  // Líquidos (ml)
+  azeite: 'ml', oleo: 'ml', 'oleo-coco': 'ml', vinagre: 'ml',
+  // Peso (kg)
+  arroz: 'kg', feijao: 'kg', 'feijao-branco': 'kg', lentilha: 'kg', 'grao-de-bico': 'kg',
+  farinha: 'kg', 'farinha-trigo': 'kg', 'farinha-mandioca': 'kg', fuba: 'kg', acucar: 'kg',
+  frango: 'kg', 'carne-bovina': 'kg', 'carne-suina': 'kg', peixe: 'kg', camarao: 'kg',
+  quinoa: 'kg', aveia: 'kg', granola: 'kg', cuscuz: 'kg',
+  // Peso (g)
+  queijo: 'g', manteiga: 'g', margarina: 'g', requeijao: 'g', 'cream-cheese': 'g',
+  gergelim: 'g', chia: 'g', amendoim: 'g', castanha: 'g', nozes: 'g', passas: 'g',
+  tahine: 'g', 'pasta-amendoim': 'g', linguica: 'g', presunto: 'g', bacon: 'g',
+};
+
+/** Suggested default unit for a canonical ingredient (falls back to category / 'un'). */
+export function suggestedUnit(id?: string): string {
+  const ing = getIngredient(id);
+  if (!ing) return 'un';
+  return UNIT_BY_ID[ing.id] ?? UNIT_BY_CATEGORY[ing.category] ?? 'un';
+}
+
 /** Lowercase, trim, strip accents — the shared normalization for all matching. */
 export function normalizeIngredient(text: string): string {
   return text

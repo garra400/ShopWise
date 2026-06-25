@@ -13,7 +13,6 @@ const DEFAULT_SETTINGS: Settings = {
   notificationsEnabled: true,
   language: 'pt',
   defaultUnit: 'un',
-  dietRestrictions: '',
   dietTags: [],
   allergens: [],
   cuisines: [],
