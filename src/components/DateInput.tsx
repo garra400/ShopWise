@@ -9,18 +9,19 @@ import { parse, format, isValid, addWeeks, addMonths, addYears } from 'date-fns'
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 interface QuickOption {
-  label: string;
+  labelKey: string;
   getDate: (from: Date) => Date;
 }
 
 const QUICK_OPTIONS: QuickOption[] = [
-  { label: '+1 sem', getDate: (d) => addWeeks(d, 1) },
-  { label: '+1 mês', getDate: (d) => addMonths(d, 1) },
-  { label: '+3 meses', getDate: (d) => addMonths(d, 3) },
-  { label: '+6 meses', getDate: (d) => addMonths(d, 6) },
-  { label: '+1 ano', getDate: (d) => addYears(d, 1) },
+  { labelKey: 'date.week1', getDate: (d) => addWeeks(d, 1) },
+  { labelKey: 'date.month1', getDate: (d) => addMonths(d, 1) },
+  { labelKey: 'date.month3', getDate: (d) => addMonths(d, 3) },
+  { labelKey: 'date.month6', getDate: (d) => addMonths(d, 6) },
+  { labelKey: 'date.year1', getDate: (d) => addYears(d, 1) },
 ];
 
 interface DateInputProps {
@@ -36,6 +37,7 @@ interface DateInputProps {
 
 export function DateInput({ value, onChange, referenceDate, label, error }: DateInputProps) {
   const theme = useTheme();
+  const t = useT();
   const ref = referenceDate ?? new Date();
 
   // Display value in dd/MM/yyyy
@@ -104,7 +106,7 @@ export function DateInput({ value, onChange, referenceDate, label, error }: Date
         ]}
         value={text}
         onChangeText={handleTextChange}
-        placeholder="dd/MM/aaaa"
+        placeholder={t('date.placeholder')}
         placeholderTextColor={theme.textSecondary}
         maxLength={10}
         keyboardType="numeric"
@@ -115,12 +117,12 @@ export function DateInput({ value, onChange, referenceDate, label, error }: Date
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
         {QUICK_OPTIONS.map((opt) => (
           <TouchableOpacity
-            key={opt.label}
+            key={opt.labelKey}
             onPress={() => applyQuick(opt)}
             style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
             activeOpacity={0.7}
           >
-            <ThemedText type="small" themeColor="textSecondary">{opt.label}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">{t(opt.labelKey)}</ThemedText>
           </TouchableOpacity>
         ))}
       </ScrollView>

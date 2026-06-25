@@ -17,7 +17,8 @@ export type IngredientCategory =
  */
 export interface CanonicalIngredient {
   id: string;                 // stable kebab-case slug, e.g. 'leite'
-  name: string;               // display name, e.g. 'Leite'
+  name: string;               // display name (pt), e.g. 'Leite'
+  nameEn: string;             // display name (en), e.g. 'Milk'
   category: IngredientCategory;
   aliases: string[];          // synonyms / plurals / variants that resolve to this id
 }
@@ -67,9 +68,12 @@ export interface RecipeIngredient {
 export interface Recipe {
   id: string;
   title: string;
+  titleEn?: string;       // English title (falls back to `title`)
   ingredients: RecipeIngredient[];
   instructions: string;
+  instructionsEn?: string;// English instructions (falls back to `instructions`)
   prepTime: number;       // minutes
+  servings?: number;      // number of portions the recipe yields
   difficulty: 'easy' | 'medium' | 'hard';
   tags?: DietTag[];       // diet properties the recipe satisfies
   allergens?: Allergen[]; // allergens the recipe contains

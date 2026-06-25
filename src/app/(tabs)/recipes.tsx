@@ -14,10 +14,11 @@ import {
   getAvailableProducts,
   RecipeMatch,
 } from '@/utils/recipes';
-import { filterByDiet, filterByAvoidIngredients, filterByCuisine, activeDietFilterSummary, CUISINE_LABELS } from '@/utils/diet';
+import { filterByDiet, filterByAvoidIngredients, filterByCuisine, activeDietFilterSummary, cuisineLabel, cuisineEntries } from '@/utils/diet';
 import { fetchRecipesByProducts } from '@/services/recipesApi';
 import { fetchCommunityRecipes } from '@/services/recipesRepo';
 import { hasSpoonacular, hasSupabase } from '@/config/integrations';
+import { useT } from '@/i18n';
 import { StatusColors, Spacing, MaxContentWidth } from '@/constants/theme';
 import { EmptyState } from '@/components/EmptyState';
 import { RecipeImage } from '@/components/RecipeImage';
@@ -25,17 +26,8 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Recipe, CuisineTag } from '@/types';
 
-const CUISINE_FILTERS = Object.entries(CUISINE_LABELS) as [CuisineTag, string][];
 const PAGE_SIZE = 12;
 const FULL_GREEN = '#2EAD5B';
-
-function difficultyLabel(d: 'easy' | 'medium' | 'hard') {
-  switch (d) {
-    case 'easy': return 'Fácil';
-    case 'medium': return 'Médio';
-    case 'hard': return 'Difícil';
-  }
-}
 
 /** De-duplicate by (normalised) title — local recipes take precedence over API ones. */
 function dedupeByTitle(recipes: Recipe[]): Recipe[] {
@@ -50,8 +42,11 @@ function dedupeByTitle(recipes: Recipe[]): Recipe[] {
 
 export default function RecipesScreen() {
   const theme = useTheme();
+  const t = useT();
   const { products, loading: productsLoading } = useProducts();
   const { settings, loading: settingsLoading } = useSettings();
+  const lang = settings.language === 'en' ? 'en' : 'pt';
+  const CUISINE_FILTERS = useMemo(() => cuisineEntries(lang), [lang]);
   const { isFavorite, toggleFavorite, favorites } = useFavorites();
 
   const [apiRecipes, setApiRecipes] = useState<Recipe[]>([]);
@@ -103,13 +98,14 @@ export default function RecipesScreen() {
 
   const visible = useMemo(() => ranked.slice(0, page * PAGE_SIZE), [ranked, page]);
 
-  const filterSummary = activeDietFilterSummary(settings);
+  const filterSummary = activeDietFilterSummary(settings, lang);
   const hasHardFilters =
     settings.dietTags.length > 0 || settings.allergens.length > 0 || settings.avoidIngredients.length > 0;
 
   function renderCard(match: RecipeMatch) {
     const { recipe, matchPercentage, hasAtRisk, hasExpiringSoon, urgentIngredientName } = match;
     const full = canMakeNow(match);
+    const cardTitle = lang === 'en' ? recipe.titleEn ?? recipe.title : recipe.title;
     return (
       <TouchableOpacity
         onPress={() => router.push(`/recipe/${recipe.id}`)}
@@ -117,19 +113,19 @@ export default function RecipesScreen() {
         activeOpacity={0.75}
       >
         <View>
-          <RecipeImage image={recipe.image} title={recipe.title} style={styles.cardImage} iconSize={36} />
+          <RecipeImage image={recipe.image} title={cardTitle} style={styles.cardImage} iconSize={36} />
           <TouchableOpacity
             onPress={() => toggleFavorite(recipe.id)}
             hitSlop={8}
             style={styles.heartOverlay}
-            accessibilityLabel={isFavorite(recipe.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+            accessibilityLabel={isFavorite(recipe.id) ? t('fav.remove') : t('fav.add')}
           >
             <Ionicons name={isFavorite(recipe.id) ? 'heart' : 'heart-outline'} size={20} color={isFavorite(recipe.id) ? '#E5484D' : '#ffffff'} />
           </TouchableOpacity>
         </View>
         <View style={styles.cardBody}>
           <View style={styles.cardHeader}>
-            <ThemedText style={styles.title} numberOfLines={1}>{recipe.title}</ThemedText>
+            <ThemedText style={styles.title} numberOfLines={1}>{cardTitle}</ThemedText>
             <View style={styles.badgeRow}>
               {recipe.origin === 'api' && (
                 <View style={[styles.onlineBadge, { backgroundColor: theme.primary + '20' }]}>
@@ -140,7 +136,7 @@ export default function RecipesScreen() {
               {full ? (
                 <View style={[styles.matchBadge, { backgroundColor: FULL_GREEN }]}>
                   <Ionicons name="checkmark-circle" size={12} color="#fff" />
-                  <ThemedText style={[styles.matchText, { color: '#fff' }]}>Tem tudo</ThemedText>
+                  <ThemedText style={[styles.matchText, { color: '#fff' }]}>{t('recipes.hasAll')}</ThemedText>
                 </View>
               ) : (
                 <View style={[styles.matchBadge, { backgroundColor: matchPercentage >= 50 ? theme.primary + '20' : theme.backgroundSelected }]}>
@@ -154,15 +150,15 @@ export default function RecipesScreen() {
             <View style={[styles.urgentHint, { backgroundColor: (hasAtRisk ? StatusColors.at_risk : StatusColors.expiring_soon) + '15' }]}>
               <Ionicons name={hasAtRisk ? 'warning' : 'time'} size={14} color={hasAtRisk ? StatusColors.at_risk : StatusColors.expiring_soon} />
               <ThemedText style={[styles.urgentText, { color: hasAtRisk ? StatusColors.at_risk : StatusColors.expiring_soon }]}>
-                Usa {urgentIngredientName} que vence em breve
+                {t('recipes.urgent', { name: urgentIngredientName })}
               </ThemedText>
             </View>
           )}
 
           <View style={styles.cardMeta}>
             <ThemedText type="small" themeColor="textSecondary">
-              {recipe.prepTime} min · {difficultyLabel(recipe.difficulty)}
-              {recipe.cuisine ? ` · ${CUISINE_LABELS[recipe.cuisine]}` : ''}
+              {recipe.prepTime} {t('common.min')} · {t(`difficulty.${recipe.difficulty}`)}
+              {recipe.cuisine ? ` · ${cuisineLabel(recipe.cuisine, lang)}` : ''}
             </ThemedText>
             <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
           </View>
@@ -179,7 +175,7 @@ export default function RecipesScreen() {
           style={[styles.searchInput, { color: theme.text }]}
           value={search}
           onChangeText={setSearch}
-          placeholder="Buscar receita ou ingrediente..."
+          placeholder={t('recipes.search')}
           placeholderTextColor={theme.textSecondary}
         />
         {!!search && (
@@ -190,8 +186,8 @@ export default function RecipesScreen() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
-        <Chip label="Favoritos" icon={onlyFavorites ? 'heart' : 'heart-outline'} active={onlyFavorites} activeColor="#E5484D" onPress={() => setOnlyFavorites((v) => !v)} theme={theme} />
-        <Chip label="Tudo" active={!cuisineFilter && !onlyFavorites} onPress={() => { setCuisineFilter(null); setOnlyFavorites(false); }} theme={theme} />
+        <Chip label={t('recipes.favorites')} icon={onlyFavorites ? 'heart' : 'heart-outline'} active={onlyFavorites} activeColor="#E5484D" onPress={() => setOnlyFavorites((v) => !v)} theme={theme} />
+        <Chip label={t('recipes.all')} active={!cuisineFilter && !onlyFavorites} onPress={() => { setCuisineFilter(null); setOnlyFavorites(false); }} theme={theme} />
         {CUISINE_FILTERS.map(([value, label]) => (
           <Chip key={value} label={label} active={cuisineFilter === value} onPress={() => setCuisineFilter(cuisineFilter === value ? null : value)} theme={theme} />
         ))}
@@ -205,14 +201,14 @@ export default function RecipesScreen() {
         >
           <Ionicons name="options-outline" size={14} color={theme.primary} />
           <ThemedText style={[styles.filterChipText, { color: theme.primary }]} numberOfLines={1}>{filterSummary}</ThemedText>
-          <ThemedText style={[styles.filterChipEdit, { color: theme.primary }]}>Editar</ThemedText>
+          <ThemedText style={[styles.filterChipEdit, { color: theme.primary }]}>{t('common.edit')}</ThemedText>
         </TouchableOpacity>
       )}
 
       {apiFetching && (
         <View style={styles.fetchingRow}>
           <ActivityIndicator size="small" color={theme.primary} />
-          <ThemedText type="small" themeColor="textSecondary">Buscando receitas online…</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">{t('recipes.fetching')}</ThemedText>
         </View>
       )}
 
@@ -220,7 +216,7 @@ export default function RecipesScreen() {
         <View style={styles.sectionHeader}>
           <Ionicons name="sparkles" size={15} color={FULL_GREEN} />
           <ThemedText style={[styles.sectionTitle, { color: FULL_GREEN }]}>
-            {fullCount} {fullCount === 1 ? 'receita com tudo que você tem' : 'receitas com tudo que você tem'}
+            {t(fullCount === 1 ? 'recipes.section_one' : 'recipes.section_other', { n: fullCount })}
           </ThemedText>
         </View>
       )}
@@ -230,7 +226,7 @@ export default function RecipesScreen() {
   if (productsLoading || settingsLoading) {
     return (
       <View style={[styles.screen, { backgroundColor: theme.background }]}>
-        <EmptyState icon="hourglass-outline" message="Carregando..." />
+        <EmptyState icon="hourglass-outline" message={t('common.loading')} />
       </View>
     );
   }
@@ -247,22 +243,22 @@ export default function RecipesScreen() {
           browsing ? (
             <EmptyState
               icon={onlyFavorites ? 'heart-outline' : 'search-outline'}
-              message={onlyFavorites ? 'Sem favoritos ainda' : 'Nada encontrado'}
-              subMessage={onlyFavorites ? 'Toque no coração de uma receita para salvá-la aqui.' : 'Tente outro termo ou toque em “Tudo”.'}
+              message={onlyFavorites ? t('recipes.empty.favTitle') : t('recipes.empty.searchTitle')}
+              subMessage={onlyFavorites ? t('recipes.empty.favSub') : t('recipes.empty.searchSub')}
             />
           ) : hasHardFilters ? (
             <EmptyState
               icon="nutrition-outline"
-              message="Nenhuma receita encontrada"
-              subMessage="Seus filtros de dieta, alérgenos ou ingredientes evitados estão ocultando tudo. Ajuste em Configurações."
-              ctaLabel="Ir para Configurações"
+              message={t('recipes.empty.filterTitle')}
+              subMessage={t('recipes.empty.filterSub')}
+              ctaLabel={t('recipes.empty.filterCta')}
               onCta={() => router.push('/(tabs)/settings')}
             />
           ) : (
             <EmptyState
               icon="restaurant-outline"
-              message="Nenhuma receita disponível"
-              subMessage="Adicione produtos ao estoque para ver sugestões de receitas."
+              message={t('recipes.empty.noneTitle')}
+              subMessage={t('recipes.empty.noneSub')}
             />
           )
         }

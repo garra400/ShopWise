@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { useProducts } from '@/context/ProductsContext';
 import { goBack } from '@/utils/nav';
 import { getStatus, statusLabel, statusColor, daysLabel, formatDate } from '@/utils/status';
+import { formatQuantity, unitOptions } from '@/utils/units';
 import { StatusBadge } from '@/components/StatusBadge';
 import { DateInput } from '@/components/DateInput';
 import { Select } from '@/components/Select';
@@ -14,16 +15,19 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
+import { useT } from '@/i18n';
+import { useSettings } from '@/context/SettingsContext';
 
 const CATEGORIES = [
   'Laticínios', 'Hortifruti', 'Carnes', 'Padaria',
   'Bebidas', 'Mercearia', 'Limpeza', 'Outros',
 ].map((c) => ({ label: c, value: c }));
 
-const UNITS = ['un', 'kg', 'g', 'L', 'ml'].map((u) => ({ label: u, value: u }));
-
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const t = useT();
+  const { settings } = useSettings();
+  const lang = settings.language === 'en' ? 'en' : 'pt';
   const theme = useTheme();
   const { products, updateProduct, removeProduct, markConsumed, renewExpiry } = useProducts();
 
@@ -41,8 +45,8 @@ export default function ProductDetailScreen() {
   if (!product) {
     return (
       <View style={[styles.centered, { backgroundColor: theme.background }]}>
-        <ThemedText>Produto não encontrado.</ThemedText>
-        <Button title="Voltar" onPress={goBack} variant="secondary" style={{ marginTop: Spacing.three }} />
+        <ThemedText>{t('product.notFound')}</ThemedText>
+        <Button title={t('common.back')} onPress={goBack} variant="secondary" style={{ marginTop: Spacing.three }} />
       </View>
     );
   }
@@ -76,7 +80,7 @@ export default function ProductDetailScreen() {
   }
 
   function handleDelete() {
-    const message = `Tem certeza que deseja excluir "${product!.name}"?`;
+    const message = t('product.deleteConfirm', { name: product!.name });
     if (Platform.OS === 'web') {
       // Alert.alert with buttons is not supported on web — use window.confirm
       if (typeof window !== 'undefined' && window.confirm(message)) {
@@ -85,12 +89,12 @@ export default function ProductDetailScreen() {
       return;
     }
     Alert.alert(
-      'Excluir produto',
+      t('product.deleteTitle'),
       message,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Excluir',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: doDelete,
         },
@@ -122,33 +126,33 @@ export default function ProductDetailScreen() {
         <View style={styles.headerContent}>
           <ThemedText style={styles.productName}>{product.name}</ThemedText>
           <StatusBadge status={status} />
-          <ThemedText style={[styles.daysText, { color }]}>{daysLabel(product)}</ThemedText>
+          <ThemedText style={[styles.daysText, { color }]}>{daysLabel(product, lang)}</ThemedText>
         </View>
       </ThemedView>
 
       {/* Details */}
       {!editing ? (
         <ThemedView type="backgroundElement" style={styles.section}>
-          <DetailRow label="Categoria" value={product.category} />
+          <DetailRow label={t('product.category')} value={t('category.' + product.category)} />
           {product.quantity != null && (
-            <DetailRow label="Quantidade" value={`${product.quantity} ${product.unit ?? ''}`} />
+            <DetailRow label={t('product.quantity')} value={formatQuantity(product.quantity, product.unit, settings.measurementSystem, lang)} />
           )}
-          <DetailRow label="Comprado em" value={formatDate(product.purchaseDate)} />
-          <DetailRow label="Validade" value={formatDate(product.expiryDate)} />
-          <DetailRow label="Origem" value={
-            product.source === 'manual' ? 'Manual'
-            : product.source === 'receipt_scan' ? 'Comprovante escaneado'
-            : 'Código de barras'
+          <DetailRow label={t('product.purchasedOn')} value={formatDate(product.purchaseDate)} />
+          <DetailRow label={t('product.expiry')} value={formatDate(product.expiryDate)} />
+          <DetailRow label={t('product.origin')} value={
+            product.source === 'manual' ? t('product.source.manual')
+            : product.source === 'receipt_scan' ? t('product.source.receipt_scan')
+            : t('product.source.barcode')
           } />
           {product.consumed && (
-            <DetailRow label="Status" value="Consumido" />
+            <DetailRow label={t('product.status')} value={t('product.consumed')} />
           )}
         </ThemedView>
       ) : (
         <ThemedView type="backgroundElement" style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Editar produto</ThemedText>
+          <ThemedText style={styles.sectionTitle}>{t('product.editTitle')}</ThemedText>
           <View style={styles.field}>
-            <ThemedText style={styles.fieldLabel}>Nome</ThemedText>
+            <ThemedText style={styles.fieldLabel}>{t('product.name')}</ThemedText>
             <TextInput
               style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
               value={editName}
@@ -156,12 +160,12 @@ export default function ProductDetailScreen() {
             />
           </View>
           <View style={styles.field}>
-            <ThemedText style={styles.fieldLabel}>Categoria</ThemedText>
-            <Select options={CATEGORIES} value={editCategory} onChange={setEditCategory} />
+            <ThemedText style={styles.fieldLabel}>{t('product.category')}</ThemedText>
+            <Select options={CATEGORIES.map((c) => ({ label: t('category.' + c.value), value: c.value }))} value={editCategory} onChange={setEditCategory} />
           </View>
           <View style={styles.row}>
             <View style={[styles.field, { flex: 2 }]}>
-              <ThemedText style={styles.fieldLabel}>Quantidade</ThemedText>
+              <ThemedText style={styles.fieldLabel}>{t('product.quantity')}</ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
                 value={editQuantity}
@@ -170,18 +174,18 @@ export default function ProductDetailScreen() {
               />
             </View>
             <View style={[styles.field, { flex: 1 }]}>
-              <ThemedText style={styles.fieldLabel}>Unidade</ThemedText>
-              <Select options={UNITS} value={editUnit} onChange={setEditUnit} />
+              <ThemedText style={styles.fieldLabel}>{t('product.unit')}</ThemedText>
+              <Select options={unitOptions(settings.measurementSystem, lang)} value={editUnit} onChange={setEditUnit} />
             </View>
           </View>
           <DateInput
-            label="Nova validade"
+            label={t('product.newExpiry')}
             value={editExpiry}
             onChange={setEditExpiry}
           />
           <View style={styles.editActions}>
-            <Button title="Salvar" onPress={saveEdit} style={{ flex: 1 }} />
-            <Button title="Cancelar" onPress={() => setEditing(false)} variant="secondary" style={{ flex: 1 }} />
+            <Button title={t('common.save')} onPress={saveEdit} style={{ flex: 1 }} />
+            <Button title={t('common.cancel')} onPress={() => setEditing(false)} variant="secondary" style={{ flex: 1 }} />
           </View>
         </ThemedView>
       )}
@@ -189,15 +193,15 @@ export default function ProductDetailScreen() {
       {/* Renew expiry */}
       {showRenew && (
         <ThemedView type="backgroundElement" style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Renovar validade</ThemedText>
+          <ThemedText style={styles.sectionTitle}>{t('product.renew')}</ThemedText>
           <DateInput
-            label="Nova data de validade"
+            label={t('product.newExpiryDate')}
             value={renewDate}
             onChange={setRenewDate}
           />
           <View style={styles.editActions}>
-            <Button title="Salvar" onPress={handleRenew} disabled={!renewDate} style={{ flex: 1 }} />
-            <Button title="Cancelar" onPress={() => setShowRenew(false)} variant="secondary" style={{ flex: 1 }} />
+            <Button title={t('common.save')} onPress={handleRenew} disabled={!renewDate} style={{ flex: 1 }} />
+            <Button title={t('common.cancel')} onPress={() => setShowRenew(false)} variant="secondary" style={{ flex: 1 }} />
           </View>
         </ThemedView>
       )}
@@ -205,20 +209,20 @@ export default function ProductDetailScreen() {
       {/* Actions */}
       {!editing && !product.consumed && (
         <View style={styles.actions}>
-          <Button title="Editar" onPress={startEdit} variant="secondary" />
-          <Button title="Marcar como consumido" onPress={handleConsume} variant="secondary" />
+          <Button title={t('common.edit')} onPress={startEdit} variant="secondary" />
+          <Button title={t('product.markConsumed')} onPress={handleConsume} variant="secondary" />
           <Button
-            title="Renovar validade"
+            title={t('product.renew')}
             onPress={() => { setShowRenew(true); setRenewDate(product.expiryDate); }}
             variant="secondary"
           />
-          <Button title="Excluir produto" onPress={handleDelete} variant="danger" />
+          <Button title={t('product.deleteTitle')} onPress={handleDelete} variant="danger" />
         </View>
       )}
 
       {product.consumed && !editing && (
         <View style={styles.actions}>
-          <Button title="Excluir produto" onPress={handleDelete} variant="danger" />
+          <Button title={t('product.deleteTitle')} onPress={handleDelete} variant="danger" />
         </View>
       )}
     </ScrollView>

@@ -133,6 +133,21 @@ export function ingredientLabel(id: string | undefined): string | undefined {
 }
 
 /**
+ * Display name for a recipe/product ingredient in the given language.
+ * Resolves through the canonical catalog (so EN names come from `nameEn`);
+ * falls back to the ingredient's own free-text name when it maps to nothing.
+ */
+export function ingredientDisplayName(
+  ing: { name: string; canonicalId?: string },
+  lang: 'pt' | 'en',
+): string {
+  const id = ing.canonicalId ?? resolveCanonicalId(ing.name);
+  const canon = getIngredient(id);
+  if (!canon) return ing.name;
+  return lang === 'en' ? canon.nameEn : canon.name;
+}
+
+/**
  * Resolve a free-text ingredient/product name to a canonical id.
  *
  * Priority:

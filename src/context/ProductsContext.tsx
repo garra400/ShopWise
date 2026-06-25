@@ -18,6 +18,8 @@ interface ProductsContextValue {
   updateProduct: (id: string, patch: Partial<Product>) => Promise<void>;
   removeProduct: (id: string) => Promise<void>;
   markConsumed: (id: string) => Promise<void>;
+  /** Mark several products as consumed in a single atomic update (loop-safe). */
+  markConsumedMany: (ids: string[]) => Promise<void>;
   renewExpiry: (id: string, newDate: string) => Promise<void>;
   reseedProducts: () => Promise<void>;
   clearProducts: () => Promise<void>;
@@ -38,6 +40,7 @@ const ProductsContext = createContext<ProductsContextValue>({
   updateProduct: async () => {},
   removeProduct: async () => {},
   markConsumed: async () => {},
+  markConsumedMany: async () => {},
   renewExpiry: async () => {},
   reseedProducts: async () => {},
   clearProducts: async () => {},
@@ -125,6 +128,19 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     [updateProduct]
   );
 
+  const markConsumedMany = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return;
+      const set = new Set(ids);
+      const now = new Date().toISOString();
+      const updated = products.map((p) =>
+        set.has(p.id) ? { ...p, consumed: true, updatedAt: now } : p
+      );
+      await persist(updated);
+    },
+    [products, persist]
+  );
+
   const renewExpiry = useCallback(
     async (id: string, newDate: string) => {
       await updateProduct(id, { expiryDate: newDate });
@@ -184,6 +200,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
         updateProduct,
         removeProduct,
         markConsumed,
+        markConsumedMany,
         renewExpiry,
         reseedProducts,
         clearProducts,

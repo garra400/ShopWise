@@ -6,6 +6,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { CanonicalIngredient, IngredientCategory } from '@/types';
 import { searchIngredients, resolveCanonicalId, getIngredient } from '@/utils/ingredients';
+import { useT } from '@/i18n';
+import { useSettings } from '@/context/SettingsContext';
 
 export interface IngredientSelection {
   name: string;
@@ -28,6 +30,10 @@ interface Props {
  */
 export function IngredientPicker({ name, canonicalId, onChange, placeholder, error }: Props) {
   const theme = useTheme();
+  const t = useT();
+  const { settings } = useSettings();
+  const lang = settings.language === 'en' ? 'en' : 'pt';
+  const ingName = (ing: CanonicalIngredient) => (lang === 'en' ? ing.nameEn : ing.name);
   const [focused, setFocused] = useState(false);
 
   const suggestions = useMemo<CanonicalIngredient[]>(
@@ -63,7 +69,7 @@ export function IngredientPicker({ name, canonicalId, onChange, placeholder, err
         onFocus={() => setFocused(true)}
         // Delay blur so a suggestion tap registers before the list unmounts.
         onBlur={() => setTimeout(() => setFocused(false), 150)}
-        placeholder={placeholder ?? 'Ex: Leite Integral'}
+        placeholder={placeholder ?? t('picker.placeholder')}
         placeholderTextColor={theme.textSecondary}
       />
 
@@ -76,9 +82,9 @@ export function IngredientPicker({ name, canonicalId, onChange, placeholder, err
               activeOpacity={0.7}
               onPress={() => pick(ing)}
             >
-              <ThemedText style={styles.optionName}>{ing.name}</ThemedText>
+              <ThemedText style={styles.optionName}>{ingName(ing)}</ThemedText>
               <ThemedText style={[styles.optionCat, { color: theme.textSecondary }]}>
-                {ing.category}
+                {t('category.' + ing.category)}
               </ThemedText>
             </TouchableOpacity>
           ))}
@@ -91,14 +97,14 @@ export function IngredientPicker({ name, canonicalId, onChange, placeholder, err
           <View style={styles.hintRow}>
             <Ionicons name="checkmark-circle" size={14} color="#2EAD5B" />
             <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
-              Reconhecido como “{resolved.name}” ({resolved.category})
+              {t('picker.recognized', { name: ingName(resolved), category: t('category.' + resolved.category) })}
             </ThemedText>
           </View>
         ) : (
           <View style={styles.hintRow}>
             <Ionicons name="alert-circle-outline" size={14} color={theme.textSecondary} />
             <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
-              Não reconhecido no catálogo — será salvo como texto livre.
+              {t('picker.notRecognized')}
             </ThemedText>
           </View>
         )

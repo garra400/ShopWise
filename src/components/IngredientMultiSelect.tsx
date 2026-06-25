@@ -6,6 +6,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { CanonicalIngredient } from '@/types';
 import { searchIngredients, getIngredient } from '@/utils/ingredients';
+import { useT } from '@/i18n';
+import { useSettings } from '@/context/SettingsContext';
 
 interface Props {
   /** Selected canonical ingredient ids. */
@@ -20,6 +22,9 @@ interface Props {
  */
 export function IngredientMultiSelect({ values, onChange, placeholder }: Props) {
   const theme = useTheme();
+  const t = useT();
+  const { settings } = useSettings();
+  const lang = settings.language === 'en' ? 'en' : 'pt';
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
 
@@ -48,7 +53,7 @@ export function IngredientMultiSelect({ values, onChange, placeholder }: Props) 
         onChangeText={setQuery}
         onFocus={() => setFocused(true)}
         onBlur={() => setTimeout(() => setFocused(false), 150)}
-        placeholder={placeholder ?? 'Buscar ingrediente para evitar...'}
+        placeholder={placeholder ?? t('multiselect.searchAvoid')}
         placeholderTextColor={theme.textSecondary}
       />
 
@@ -56,7 +61,7 @@ export function IngredientMultiSelect({ values, onChange, placeholder }: Props) 
         <View style={[styles.list, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
           {suggestions.map((ing) => (
             <TouchableOpacity key={ing.id} style={styles.option} activeOpacity={0.7} onPress={() => add(ing.id)}>
-              <ThemedText style={styles.optionName}>{ing.name}</ThemedText>
+              <ThemedText style={styles.optionName}>{lang === 'en' ? ing.nameEn : ing.name}</ThemedText>
               <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
             </TouchableOpacity>
           ))}
@@ -66,7 +71,8 @@ export function IngredientMultiSelect({ values, onChange, placeholder }: Props) 
       {values.length > 0 && (
         <View style={styles.chips}>
           {values.map((id) => {
-            const label = getIngredient(id)?.name ?? id;
+            const ing = getIngredient(id);
+            const label = (ing ? (lang === 'en' ? ing.nameEn : ing.name) : undefined) ?? id;
             return (
               <TouchableOpacity
                 key={id}

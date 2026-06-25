@@ -6,14 +6,16 @@ import { ProductCard } from '@/components/ProductCard';
 import { EmptyState } from '@/components/EmptyState';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Spacing } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 export default function ExpiringScreen() {
   const { products, loading } = useProducts();
+  const t = useT();
 
   if (loading) {
     return (
       <ScreenContainer>
-        <EmptyState icon="hourglass-outline" message="Carregando..." />
+        <EmptyState icon="hourglass-outline" message={t('common.loading')} />
       </ScreenContainer>
     );
   }
@@ -27,8 +29,8 @@ export default function ExpiringScreen() {
       <ScreenContainer>
         <EmptyState
           icon="checkmark-circle-outline"
-          message="Nenhum produto para vencer"
-          subMessage="Produtos que vencem em 7–30 dias aparecerão aqui"
+          message={t('expiring.empty')}
+          subMessage={t('expiring.empty.sub')}
         />
       </ScreenContainer>
     );

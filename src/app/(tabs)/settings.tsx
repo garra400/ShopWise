@@ -1,5 +1,5 @@
 import { View, TextInput, Switch, ScrollView, StyleSheet, Alert, Platform, ActivityIndicator } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSettings } from '@/context/SettingsContext';
 import { useProducts } from '@/context/ProductsContext';
 import { useSync } from '@/context/SyncContext';
@@ -13,28 +13,9 @@ import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { DietTag, Allergen, CuisineTag } from '@/types';
-import { DIET_TAG_LABELS, ALLERGEN_LABELS, CUISINE_LABELS } from '@/utils/diet';
+import { dietTagEntries, allergenEntries, cuisineEntries } from '@/utils/diet';
+import { unitOptions } from '@/utils/units';
 import { useT } from '@/i18n';
-
-const UNIT_OPTIONS = [
-  { label: 'Unidade (un)', value: 'un' },
-  { label: 'Quilograma (kg)', value: 'kg' },
-  { label: 'Grama (g)', value: 'g' },
-  { label: 'Litro (L)', value: 'L' },
-  { label: 'Mililitro (ml)', value: 'ml' },
-];
-
-const DIET_TAG_OPTIONS = (Object.entries(DIET_TAG_LABELS) as [DietTag, string][]).map(
-  ([value, label]) => ({ value, label }),
-);
-
-const ALLERGEN_OPTIONS = (Object.entries(ALLERGEN_LABELS) as [Allergen, string][]).map(
-  ([value, label]) => ({ value, label }),
-);
-
-const CUISINE_OPTIONS = (Object.entries(CUISINE_LABELS) as [CuisineTag, string][]).map(
-  ([value, label]) => ({ value, label }),
-);
 
 function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -49,15 +30,21 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const t = useT();
   const { settings, updateSettings } = useSettings();
+  const lang = settings.language === 'en' ? 'en' : 'pt';
   const { reseedProducts, clearProducts } = useProducts();
   const { enabled, user, syncing, lastSyncAt, error, signIn, signUp, signOut, syncNow } = useSync();
+
+  const UNIT_OPTIONS = useMemo(() => unitOptions(settings.measurementSystem, lang), [settings.measurementSystem, lang]);
+  const DIET_TAG_OPTIONS = useMemo(() => dietTagEntries(lang).map(([value, label]) => ({ value, label })), [lang]);
+  const ALLERGEN_OPTIONS = useMemo(() => allergenEntries(lang).map(([value, label]) => ({ value, label })), [lang]);
+  const CUISINE_OPTIONS = useMemo(() => cuisineEntries(lang).map(([value, label]) => ({ value, label })), [lang]);
 
   const [syncEmail, setSyncEmail] = useState('');
   const [syncPassword, setSyncPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
   function handleClearProducts() {
-    const message = 'Tem certeza que deseja remover todos os produtos?';
+    const message = t('settings.clear.confirm');
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.confirm(message)) {
         clearProducts();
@@ -65,11 +52,11 @@ export default function SettingsScreen() {
       return;
     }
     Alert.alert(
-      'Limpar Produtos',
+      t('settings.clear.title'),
       message,
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Limpar', style: 'destructive', onPress: () => clearProducts() },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.clear'), style: 'destructive', onPress: () => clearProducts() },
       ]
     );
   }
@@ -89,10 +76,10 @@ export default function SettingsScreen() {
   }
 
   function formatLastSync(iso: string | null): string {
-    if (!iso) return 'Nunca';
+    if (!iso) return t('settings.never');
     try {
       const d = new Date(iso);
-      return d.toLocaleString('pt-BR', {
+      return d.toLocaleString(lang === 'en' ? 'en-US' : 'pt-BR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -227,32 +214,31 @@ export default function SettingsScreen() {
 
       {!enabled && (
         <ThemedView type="backgroundElement" style={styles.section}>
-          <ThemedText style={styles.subLabel}>Sincronização na nuvem (opcional)</ThemedText>
+          <ThemedText style={styles.subLabel}>{t('settings.cloud')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-            O app funciona 100% offline sem nenhuma configuração. Para ativar a
-            sincronização gratuita entre dispositivos:
+            {t('settings.cloud.intro')}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            1. Crie um projeto gratuito em supabase.com (sem cartão de crédito).
+            {t('settings.cloud.step1')}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            2. Execute o arquivo <ThemedText type="small" style={{ fontFamily: 'monospace' }}>supabase_schema.sql</ThemedText> no SQL Editor do Supabase.
+            {t('settings.cloud.step2')}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            3. Copie o arquivo <ThemedText type="small" style={{ fontFamily: 'monospace' }}>.env.example</ThemedText> para <ThemedText type="small" style={{ fontFamily: 'monospace' }}>.env</ThemedText> e preencha:
+            {t('settings.cloud.step3')}
           </ThemedText>
           <ThemedText type="small" style={[styles.codeBlock, { backgroundColor: theme.backgroundElement, color: theme.text }]}>
             {'EXPO_PUBLIC_SUPABASE_URL=...\nEXPO_PUBLIC_SUPABASE_ANON_KEY=...'}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Sem essas chaves o app continua funcionando normalmente, apenas local.
+            {t('settings.cloud.note')}
           </ThemedText>
         </ThemedView>
       )}
 
       {enabled && !user && (
         <ThemedView type="backgroundElement" style={styles.section}>
-          <ThemedText style={styles.subLabel}>Entrar na conta</ThemedText>
+          <ThemedText style={styles.subLabel}>{t('settings.signin')}</ThemedText>
           {!!error && (
             <ThemedText type="small" style={[styles.errorText, { color: '#D64545' }]}>
               {error}
@@ -263,7 +249,7 @@ export default function SettingsScreen() {
               styles.authInput,
               { backgroundColor: theme.background, color: theme.text, borderColor: theme.border },
             ]}
-            placeholder="E-mail"
+            placeholder={t('settings.email')}
             placeholderTextColor={theme.textSecondary}
             value={syncEmail}
             onChangeText={setSyncEmail}
@@ -277,7 +263,7 @@ export default function SettingsScreen() {
               styles.authInput,
               { backgroundColor: theme.background, color: theme.text, borderColor: theme.border },
             ]}
-            placeholder="Senha"
+            placeholder={t('settings.password')}
             placeholderTextColor={theme.textSecondary}
             value={syncPassword}
             onChangeText={setSyncPassword}
@@ -287,14 +273,14 @@ export default function SettingsScreen() {
           />
           <View style={styles.authButtons}>
             <Button
-              title="Entrar"
+              title={t('settings.enter')}
               onPress={handleSignIn}
               loading={authLoading}
               disabled={!syncEmail.trim() || !syncPassword}
               style={styles.authButton}
             />
             <Button
-              title="Criar conta"
+              title={t('settings.createAccount')}
               onPress={handleSignUp}
               variant="secondary"
               loading={authLoading}
@@ -308,14 +294,14 @@ export default function SettingsScreen() {
       {enabled && !!user && (
         <ThemedView type="backgroundElement" style={styles.section}>
           <View style={styles.row}>
-            <ThemedText style={styles.rowLabel}>Conta</ThemedText>
+            <ThemedText style={styles.rowLabel}>{t('settings.accountLabel')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
               {user.email ?? user.id}
             </ThemedText>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.row}>
-            <ThemedText style={styles.rowLabel}>Última sincronização</ThemedText>
+            <ThemedText style={styles.rowLabel}>{t('settings.lastSync')}</ThemedText>
             <View style={styles.rowControl}>
               {syncing ? (
                 <ActivityIndicator size="small" color={theme.primary} />
@@ -332,13 +318,13 @@ export default function SettingsScreen() {
             </ThemedText>
           )}
           <Button
-            title="Sincronizar agora"
+            title={t('settings.syncNow')}
             onPress={syncNow}
             loading={syncing}
             disabled={syncing}
           />
           <Button
-            title="Sair"
+            title={t('settings.signout')}
             onPress={signOut}
             variant="secondary"
             disabled={syncing}

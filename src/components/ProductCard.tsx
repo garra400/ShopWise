@@ -3,6 +3,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { Product } from '@/types';
 import { getStatus, statusColor, daysLabel } from '@/utils/status';
+import { formatQuantity } from '@/utils/units';
+import { useSettings } from '@/context/SettingsContext';
+import { useT } from '@/i18n';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 
@@ -13,6 +16,9 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onPress }: ProductCardProps) {
   const theme = useTheme();
+  const t = useT();
+  const { settings } = useSettings();
+  const lang = settings.language === 'en' ? 'en' : 'pt';
   const status = getStatus(product);
   const color = statusColor(status);
 
@@ -34,12 +40,12 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         </View>
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.category}>
-          {product.category}
-          {product.quantity != null ? ` · ${product.quantity}${product.unit ? ` ${product.unit}` : ''}` : ''}
+          {product.category ? t('category.' + product.category) : ''}
+          {product.quantity != null ? ` · ${formatQuantity(product.quantity, product.unit, settings.measurementSystem, lang)}` : ''}
         </ThemedText>
 
         <ThemedText style={[styles.days, { color }]} type="small">
-          {daysLabel(product)}
+          {daysLabel(product, lang)}
         </ThemedText>
       </View>
     </TouchableOpacity>

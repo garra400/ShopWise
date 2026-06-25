@@ -25,6 +25,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { resolveCanonicalId, getIngredient, suggestedShelfLifeDays, suggestedUnit } from '@/utils/ingredients';
 import { IngredientCategory } from '@/types';
+import { useT } from '@/i18n';
 
 interface EditableItem {
   name: string;
@@ -73,6 +74,7 @@ function splitItems(receiptItems: ReceiptItem[]): { recognized: EditableItem[]; 
 export default function ScanScreen() {
   const theme = useTheme();
   const { addProducts } = useProducts();
+  const t = useT();
 
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [images, setImages] = useState<string[]>([]);
@@ -123,9 +125,9 @@ export default function ScanScreen() {
     let fell = false;
     try {
       for (let i = 0; i < images.length; i++) {
-        setOcrStatus(`Lendo nota ${i + 1}/${images.length}…`);
+        setOcrStatus(t('scan.reading', { i: i + 1, total: images.length }));
         const { items: rec, usedFallback: f } = await recognizeReceiptFromImage(images[i], (s, p) => {
-          setOcrStatus(`Nota ${i + 1}/${images.length}: ${s}`);
+          setOcrStatus(t('scan.noteProgress', { i: i + 1, total: images.length, status: s }));
           setOcrProgress(p);
         });
         all.push(...rec);
@@ -233,24 +235,24 @@ export default function ScanScreen() {
         <ThemedView type="backgroundElement" style={styles.notice}>
           <Ionicons name="receipt-outline" size={20} color={theme.textSecondary} />
           <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
-            Leia o QR Code da nota fiscal ou envie uma ou mais fotos do cupom. Depois toque em “Reconhecer produtos” para revisar.
+            {t('scan.notice')}
           </ThemedText>
         </ThemedView>
 
         {Platform.OS !== 'web' && (
-          <Button title="Ler QR Code da nota fiscal" onPress={() => router.push('/add/qrcode')} variant="primary" disabled={recognizing} />
+          <Button title={t('scan.readQr')} onPress={() => router.push('/add/qrcode')} variant="primary" disabled={recognizing} />
         )}
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.orLabel}>
-          ou envie fotos do cupom
+          {t('scan.orPhotos')}
         </ThemedText>
 
         <View style={styles.btnRow}>
           <View style={{ flex: 1 }}>
-            <Button title="Galeria" onPress={addFromGallery} variant="secondary" disabled={recognizing} />
+            <Button title={t('scan.gallery')} onPress={addFromGallery} variant="secondary" disabled={recognizing} />
           </View>
           <View style={{ flex: 1 }}>
-            <Button title="Câmera" onPress={addFromCamera} variant="secondary" disabled={recognizing} />
+            <Button title={t('scan.camera')} onPress={addFromCamera} variant="secondary" disabled={recognizing} />
           </View>
         </View>
 
@@ -278,7 +280,7 @@ export default function ScanScreen() {
 
         {images.length > 0 && (
           <Button
-            title={recognizing ? `Reconhecendo… ${progressPercent}%` : `Reconhecer produtos (${images.length} ${images.length === 1 ? 'nota' : 'notas'})`}
+            title={recognizing ? t('scan.recognizing', { progress: progressPercent }) : t(images.length === 1 ? 'scan.recognize_one' : 'scan.recognize_other', { n: images.length })}
             onPress={handleRecognize}
             loading={recognizing}
             variant="primary"
@@ -288,7 +290,7 @@ export default function ScanScreen() {
 
         <TouchableOpacity onPress={handleSimulate} disabled={recognizing} style={styles.simulateLink}>
           <ThemedText type="small" themeColor="textSecondary" style={{ textDecorationLine: 'underline' }}>
-            Simular leitura (demonstração)
+            {t('scan.simulate')}
           </ThemedText>
         </TouchableOpacity>
       </ScrollView>
@@ -301,10 +303,10 @@ export default function ScanScreen() {
       <View style={styles.reviewHeader}>
         <TouchableOpacity onPress={() => setStep('input')} hitSlop={8} style={styles.backLink}>
           <Ionicons name="chevron-back" size={18} color={theme.primary} />
-          <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>Notas</ThemedText>
+          <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>{t('scan.notes')}</ThemedText>
         </TouchableOpacity>
         <ThemedText style={styles.sectionTitle}>
-          {validCount} {validCount === 1 ? 'item' : 'itens'}
+          {t(validCount === 1 ? 'scan.items_one' : 'scan.items_other', { n: validCount })}
         </ThemedText>
       </View>
 
@@ -312,7 +314,7 @@ export default function ScanScreen() {
         <ThemedView type="backgroundElement" style={styles.fallbackNote}>
           <Ionicons name="warning-outline" size={16} color={theme.textSecondary} />
           <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
-            Não foi possível ler com clareza — usando um exemplo. Ajuste os itens.
+            {t('scan.fallback')}
           </ThemedText>
         </ThemedView>
       )}
@@ -321,7 +323,7 @@ export default function ScanScreen() {
         <ThemedView type="backgroundElement" style={styles.fallbackNote}>
           <Ionicons name="information-circle-outline" size={16} color={theme.textSecondary} />
           <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
-            Nenhum item reconhecido. Adicione manualmente abaixo{ignored.length > 0 ? ' ou veja os itens ignorados' : ''}.
+            {t(ignored.length > 0 ? 'scan.noneRecognizedSeeIgnored' : 'scan.noneRecognized')}
           </ThemedText>
         </ThemedView>
       )}
@@ -337,7 +339,7 @@ export default function ScanScreen() {
                   name={item.name}
                   canonicalId={item.canonicalId}
                   onChange={(next) => changeIngredient(index, next.name, next.canonicalId, next.category)}
-                  placeholder="Nome do produto"
+                  placeholder={t('product.name')}
                 />
               </View>
               <TouchableOpacity onPress={() => removeItem(index)} hitSlop={8}>
@@ -347,7 +349,7 @@ export default function ScanScreen() {
 
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1 }]}>
-                <ThemedText type="small" style={styles.fieldLabel}>Qtd</ThemedText>
+                <ThemedText type="small" style={styles.fieldLabel}>{t('scan.qty')}</ThemedText>
                 <TextInput
                   style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
                   value={String(item.quantity)}
@@ -356,7 +358,7 @@ export default function ScanScreen() {
                 />
               </View>
               <View style={[styles.field, { flex: 1 }]}>
-                <ThemedText type="small" style={styles.fieldLabel}>Unidade</ThemedText>
+                <ThemedText type="small" style={styles.fieldLabel}>{t('scan.unit')}</ThemedText>
                 <TextInput
                   style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
                   value={item.unit}
@@ -365,11 +367,11 @@ export default function ScanScreen() {
               </View>
             </View>
 
-            <DateInput label="Validade" value={item.expiryDate} onChange={(d) => updateItem(index, { expiryDate: d })} />
+            <DateInput label={t('product.expiry')} value={item.expiryDate} onChange={(d) => updateItem(index, { expiryDate: d })} />
 
             {recognized && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.recognizedHint}>
-                ✓ {recognized.name} · {recognized.category} · validade típica {suggestedShelfLifeDays(item.canonicalId)} dias
+                {t('scan.recognizedHint', { name: recognized.name, category: t('category.' + recognized.category), days: suggestedShelfLifeDays(item.canonicalId) })}
               </ThemedText>
             )}
           </ThemedView>
@@ -378,7 +380,7 @@ export default function ScanScreen() {
 
       <TouchableOpacity onPress={addManualItem} style={[styles.addRow, { borderColor: theme.border }]} activeOpacity={0.7}>
         <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
-        <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>Adicionar outro item</ThemedText>
+        <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>{t('scan.addAnother')}</ThemedText>
       </TouchableOpacity>
 
       {ignored.length > 0 && (
@@ -386,15 +388,15 @@ export default function ScanScreen() {
           <TouchableOpacity onPress={() => setShowIgnored((v) => !v)} style={styles.ignoredToggle} hitSlop={6}>
             <Ionicons name={showIgnored ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
             <ThemedText type="small" themeColor="textSecondary">
-              {showIgnored ? 'Ocultar' : 'Mostrar'} {ignored.length} {ignored.length === 1 ? 'item ignorado' : 'itens ignorados'}
+              {t(showIgnored ? 'common.hide' : 'common.show')} {t(ignored.length === 1 ? 'scan.ignored_one' : 'scan.ignored_other', { n: ignored.length })}
             </ThemedText>
           </TouchableOpacity>
           {showIgnored && ignored.map((it, i) => (
             <View key={`${it.name}-${i}`} style={[styles.ignoredRow, { borderColor: theme.border }]}>
-              <ThemedText type="small" style={{ flex: 1 }} numberOfLines={1}>{it.name || '(sem nome)'}</ThemedText>
+              <ThemedText type="small" style={{ flex: 1 }} numberOfLines={1}>{it.name || t('scan.noName')}</ThemedText>
               <TouchableOpacity onPress={() => promoteIgnored(i)} hitSlop={6} style={styles.ignoredAdd}>
                 <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
-                <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>Adicionar</ThemedText>
+                <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>{t('common.add')}</ThemedText>
               </TouchableOpacity>
             </View>
           ))}
@@ -402,7 +404,7 @@ export default function ScanScreen() {
       )}
 
       <Button
-        title={`Adicionar ${validCount} ${validCount === 1 ? 'produto' : 'produtos'} à despensa`}
+        title={t(validCount === 1 ? 'scan.addProducts_one' : 'scan.addProducts_other', { n: validCount })}
         onPress={handleAdd}
         loading={submitting}
         disabled={validCount === 0}

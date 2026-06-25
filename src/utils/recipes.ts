@@ -127,11 +127,12 @@ export function isPreferredMatch(match: RecipeMatch, preferredCuisines: CuisineT
   );
 }
 
-/** Free-text search over a recipe's title and ingredient names (accent-insensitive). */
+/** Free-text search over a recipe's title (pt + en) and ingredient names (accent-insensitive). */
 export function recipeMatchesQuery(recipe: Recipe, query: string): boolean {
   const q = normalizeIngredient(query);
   if (!q) return true;
   if (normalizeIngredient(recipe.title).includes(q)) return true;
+  if (recipe.titleEn && normalizeIngredient(recipe.titleEn).includes(q)) return true;
   return recipe.ingredients.some((i) => normalizeIngredient(i.name).includes(q));
 }
 

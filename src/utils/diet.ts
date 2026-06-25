@@ -1,36 +1,49 @@
 import { DietTag, Allergen, CuisineTag, Recipe, Settings } from '@/types';
 import { resolveCanonicalId, getIngredient } from '@/utils/ingredients';
+import type { Lang } from '@/i18n';
 
-/** Portuguese labels for diet tags */
-export const DIET_TAG_LABELS: Record<DietTag, string> = {
-  vegetariano: 'Vegetariano',
-  vegano: 'Vegano',
-  sem_gluten: 'Sem Glúten',
-  sem_lactose: 'Sem Lactose',
+/** Bilingual labels for diet tags (sentence case). */
+const DIET_TAG_LABELS_I18N: Record<Lang, Record<DietTag, string>> = {
+  pt: { vegetariano: 'Vegetariano', vegano: 'Vegano', sem_gluten: 'Sem glúten', sem_lactose: 'Sem lactose' },
+  en: { vegetariano: 'Vegetarian', vegano: 'Vegan', sem_gluten: 'Gluten-free', sem_lactose: 'Lactose-free' },
 };
 
-/** Portuguese labels for allergens */
-export const ALLERGEN_LABELS: Record<Allergen, string> = {
-  leite: 'Leite',
-  gluten: 'Glúten',
-  ovo: 'Ovo',
-  amendoim: 'Amendoim',
-  frutos_do_mar: 'Frutos do Mar',
-  soja: 'Soja',
-  castanhas: 'Castanhas',
+/** Bilingual labels for allergens. */
+const ALLERGEN_LABELS_I18N: Record<Lang, Record<Allergen, string>> = {
+  pt: { leite: 'Leite', gluten: 'Glúten', ovo: 'Ovo', amendoim: 'Amendoim', frutos_do_mar: 'Frutos do mar', soja: 'Soja', castanhas: 'Castanhas' },
+  en: { leite: 'Milk', gluten: 'Gluten', ovo: 'Egg', amendoim: 'Peanut', frutos_do_mar: 'Seafood', soja: 'Soy', castanhas: 'Tree nuts' },
 };
 
-/** Portuguese labels for cuisines */
-export const CUISINE_LABELS: Record<CuisineTag, string> = {
-  brasileira: 'Brasileira',
-  italiana: 'Italiana',
-  mexicana: 'Mexicana',
-  asiatica: 'Asiática',
-  arabe: 'Árabe',
-  mediterranea: 'Mediterrânea',
-  americana: 'Americana',
-  indiana: 'Indiana',
+/** Bilingual labels for cuisines. */
+const CUISINE_LABELS_I18N: Record<Lang, Record<CuisineTag, string>> = {
+  pt: { brasileira: 'Brasileira', italiana: 'Italiana', mexicana: 'Mexicana', asiatica: 'Asiática', arabe: 'Árabe', mediterranea: 'Mediterrânea', americana: 'Americana', indiana: 'Indiana' },
+  en: { brasileira: 'Brazilian', italiana: 'Italian', mexicana: 'Mexican', asiatica: 'Asian', arabe: 'Arabic', mediterranea: 'Mediterranean', americana: 'American', indiana: 'Indian' },
 };
+
+export function dietTagLabel(tag: DietTag, lang: Lang): string {
+  return DIET_TAG_LABELS_I18N[lang][tag];
+}
+export function allergenLabel(allergen: Allergen, lang: Lang): string {
+  return ALLERGEN_LABELS_I18N[lang][allergen];
+}
+export function cuisineLabel(cuisine: CuisineTag, lang: Lang): string {
+  return CUISINE_LABELS_I18N[lang][cuisine];
+}
+
+/** Ordered cuisine entries for filter chips / pickers, localized. */
+export function cuisineEntries(lang: Lang): [CuisineTag, string][] {
+  return (Object.keys(CUISINE_LABELS_I18N[lang]) as CuisineTag[]).map((c) => [c, CUISINE_LABELS_I18N[lang][c]]);
+}
+
+/** Ordered diet-tag entries for chips / pickers, localized. */
+export function dietTagEntries(lang: Lang): [DietTag, string][] {
+  return (Object.keys(DIET_TAG_LABELS_I18N[lang]) as DietTag[]).map((d) => [d, DIET_TAG_LABELS_I18N[lang][d]]);
+}
+
+/** Ordered allergen entries for chips / pickers, localized. */
+export function allergenEntries(lang: Lang): [Allergen, string][] {
+  return (Object.keys(ALLERGEN_LABELS_I18N[lang]) as Allergen[]).map((a) => [a, ALLERGEN_LABELS_I18N[lang][a]]);
+}
 
 /**
  * Filter recipes by preferred cuisines.
@@ -101,19 +114,21 @@ export function filterByDiet(recipes: Recipe[], settings: Settings): Recipe[] {
   });
 }
 
-/** Build a human-readable summary of active diet filters (pt-BR). */
-export function activeDietFilterSummary(settings: Settings): string {
+/** Build a human-readable summary of active diet filters in the given language. */
+export function activeDietFilterSummary(settings: Settings, lang: Lang): string {
+  const without = lang === 'en' ? 'No' : 'Sem';
   const parts: string[] = [];
   for (const tag of settings.dietTags) {
-    parts.push(DIET_TAG_LABELS[tag]);
+    parts.push(dietTagLabel(tag, lang));
   }
   for (const allergen of settings.allergens) {
-    parts.push(`Sem ${ALLERGEN_LABELS[allergen]}`);
+    parts.push(`${without} ${allergenLabel(allergen, lang).toLowerCase()}`);
   }
   // Cuisines are a SOFT preference (they re-rank, not hide) — not listed here.
   for (const id of settings.avoidIngredients) {
-    const label = getIngredient(id)?.name ?? id;
-    parts.push(`Sem ${label}`);
+    const ing = getIngredient(id);
+    const label = ing ? (lang === 'en' ? ing.nameEn : ing.name) : id;
+    parts.push(`${without} ${label.toLowerCase()}`);
   }
   return parts.join(' · ');
 }

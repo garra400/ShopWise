@@ -5,14 +5,16 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 export default function AddMenuScreen() {
   const theme = useTheme();
+  const t = useT();
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ThemedText style={styles.subtitle} themeColor="textSecondary">
-        Como você quer adicionar?
+        {t('addmenu.how')}
       </ThemedText>
 
       <View style={styles.cards}>
@@ -24,9 +26,9 @@ export default function AddMenuScreen() {
           <View style={[styles.iconWrap, { backgroundColor: theme.primary + '20' }]}>
             <Ionicons name="create-outline" size={36} color={theme.primary} />
           </View>
-          <ThemedText style={styles.cardTitle}>Inserir manualmente</ThemedText>
+          <ThemedText style={styles.cardTitle}>{t('addmenu.manual')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.cardDesc}>
-            Preencha os dados do produto um a um
+            {t('addmenu.manual.desc')}
           </ThemedText>
         </TouchableOpacity>
 
@@ -38,9 +40,9 @@ export default function AddMenuScreen() {
           <View style={[styles.iconWrap, { backgroundColor: '#2EAD5B20' }]}>
             <Ionicons name="scan-outline" size={36} color="#2EAD5B" />
           </View>
-          <ThemedText style={styles.cardTitle}>Escanear comprovante</ThemedText>
+          <ThemedText style={styles.cardTitle}>{t('addmenu.scan')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.cardDesc}>
-            Escaneie a nota fiscal para adicionar vários produtos de uma vez
+            {t('addmenu.scan.desc')}
           </ThemedText>
         </TouchableOpacity>
       </View>

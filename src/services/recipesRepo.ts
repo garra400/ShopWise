@@ -19,9 +19,12 @@ export const communityRecipeCache = new Map<string, Recipe>();
 interface RecipeRow {
   id: string;
   title: string;
+  title_en: string | null;
   ingredients: unknown;
   instructions: string | null;
+  instructions_en: string | null;
   prep_time: number | null;
+  servings: number | null;
   difficulty: string | null;
   tags: unknown;
   allergens: unknown;
@@ -49,9 +52,12 @@ function rowToRecipe(row: RecipeRow): Recipe {
   return {
     id: row.id,
     title: row.title,
+    titleEn: row.title_en ?? undefined,
     ingredients,
     instructions: row.instructions ?? '',
+    instructionsEn: row.instructions_en ?? undefined,
     prepTime: row.prep_time ?? 0,
+    servings: typeof row.servings === 'number' ? row.servings : undefined,
     difficulty,
     tags: asArray<DietTag>(row.tags),
     allergens: asArray<Allergen>(row.allergens),

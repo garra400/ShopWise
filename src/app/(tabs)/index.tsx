@@ -3,7 +3,9 @@ import { router, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLayoutEffect } from 'react';
 import { useProducts } from '@/context/ProductsContext';
-import { getStatus } from '@/utils/status';
+import { getStatus, statusLabel } from '@/utils/status';
+import { useT } from '@/i18n';
+import { useSettings } from '@/context/SettingsContext';
 import { ProductCard } from '@/components/ProductCard';
 import { EmptyState } from '@/components/EmptyState';
 import { ScreenContainer } from '@/components/ScreenContainer';
@@ -24,10 +26,33 @@ function StatusSummaryDot({ color, count, label }: { color: string; count: numbe
   );
 }
 
+function Shortcut({
+  theme, icon, label, onPress,
+}: {
+  theme: ReturnType<typeof useTheme>;
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={[styles.shortcut, { backgroundColor: theme.backgroundElement }]}
+    >
+      <Ionicons name={icon} size={22} color={theme.primary} />
+      <ThemedText type="small" style={styles.shortcutLabel}>{label}</ThemedText>
+    </TouchableOpacity>
+  );
+}
+
 export default function HomeScreen() {
   const theme = useTheme();
   const { products, loading } = useProducts();
   const navigation = useNavigation();
+  const t = useT();
+  const { settings } = useSettings();
+  const lang = settings.language === 'en' ? 'en' : 'pt';
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -46,7 +71,7 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <ScreenContainer>
-        <EmptyState icon="hourglass-outline" message="Carregando..." />
+        <EmptyState icon="hourglass-outline" message={t('common.loading')} />
       </ScreenContainer>
     );
   }
@@ -75,13 +100,32 @@ export default function HomeScreen() {
 
   return (
     <ScreenContainer>
-      {/* Summary header */}
+      {/* Dashboard panel: headline + status tiles */}
       <ThemedView type="backgroundElement" style={styles.summary}>
-        <StatusSummaryDot color={StatusColors.good} count={goodCount} label="Bom" />
-        <StatusSummaryDot color={StatusColors.expiring_soon} count={expiringCount} label="P. Vencer" />
-        <StatusSummaryDot color={StatusColors.at_risk} count={atRiskCount} label="Em Risco" />
-        <StatusSummaryDot color={StatusColors.expired} count={expiredCount} label="Vencido" />
+        <ThemedText
+          style={[
+            styles.panelTitle,
+            { color: expiringCount + atRiskCount + expiredCount === 0 ? StatusColors.good : StatusColors.at_risk },
+          ]}
+        >
+          {expiringCount + atRiskCount === 0
+            ? t('home.allGood')
+            : t('home.summaryLine', { e: expiringCount, r: atRiskCount })}
+        </ThemedText>
+        <View style={styles.statsRow}>
+          <StatusSummaryDot color={StatusColors.good} count={goodCount} label={statusLabel('good', lang)} />
+          <StatusSummaryDot color={StatusColors.expiring_soon} count={expiringCount} label={statusLabel('expiring_soon', lang)} />
+          <StatusSummaryDot color={StatusColors.at_risk} count={atRiskCount} label={statusLabel('at_risk', lang)} />
+          <StatusSummaryDot color={StatusColors.expired} count={expiredCount} label={statusLabel('expired', lang)} />
+        </View>
       </ThemedView>
+
+      {/* Quick shortcuts */}
+      <View style={styles.shortcutsRow}>
+        <Shortcut theme={theme} icon="add-circle-outline" label={t('home.shortcut.add')} onPress={() => router.push('/add')} />
+        <Shortcut theme={theme} icon="restaurant-outline" label={t('home.shortcut.recipes')} onPress={() => router.push('/(tabs)/recipes')} />
+        <Shortcut theme={theme} icon="time-outline" label={t('home.shortcut.expiring')} onPress={() => router.push('/(tabs)/expiring')} />
+      </View>
 
       {/* Para Vencer banner */}
       {expiringCount > 0 && (
@@ -92,7 +136,7 @@ export default function HomeScreen() {
         >
           <Ionicons name="time" size={20} color={StatusColors.expiring_soon} />
           <ThemedText style={[styles.bannerText, { color: StatusColors.expiring_soon }]}>
-            Você tem {expiringCount} produto{expiringCount !== 1 ? 's' : ''} para vencer →
+            {t(expiringCount === 1 ? 'home.banner_one' : 'home.banner_other', { n: expiringCount })}
           </ThemedText>
         </TouchableOpacity>
       )}
@@ -101,13 +145,14 @@ export default function HomeScreen() {
       {sorted.length === 0 ? (
         <EmptyState
           icon="basket-outline"
-          message="Sua despensa está vazia"
-          subMessage="Adicione produtos para começar a monitorar a validade"
-          ctaLabel="Adicionar produto"
+          message={t('home.empty')}
+          subMessage={t('home.empty.sub')}
+          ctaLabel={t('route.add')}
           onCta={() => router.push('/add')}
         />
       ) : (
         <View style={styles.list}>
+          <ThemedText style={styles.sectionTitle}>{t('home.section')}</ThemedText>
           {sorted.map((product: Product) => (
             <ProductCard
               key={product.id}
@@ -132,15 +177,45 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   summary: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
     padding: Spacing.three,
     borderRadius: Spacing.two,
     marginBottom: Spacing.three,
+    gap: Spacing.three,
+  },
+  panelTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
   },
   summaryItem: {
     alignItems: 'center',
     gap: Spacing.one,
+  },
+  shortcutsRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  shortcut: {
+    flex: 1,
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.two,
+  },
+  shortcutLabel: {
+    fontWeight: '600',
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    opacity: 0.6,
+    marginBottom: Spacing.one,
   },
   dot: {
     width: 10,

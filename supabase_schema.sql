@@ -62,27 +62,33 @@ create policy "Users can delete their own products"
 -- model 1:1 (filtering and matching happen client-side).
 -- =============================================================================
 create table if not exists public.recipes (
-  id           text        primary key,
-  title        text        not null,
-  ingredients  jsonb       not null default '[]'::jsonb,  -- [{name, canonicalId, quantity, unit}]
-  instructions text        not null default '',
-  prep_time    integer     not null default 0,
-  difficulty   text        not null default 'easy',
-  tags         jsonb       not null default '[]'::jsonb,   -- DietTag[]
-  allergens    jsonb       not null default '[]'::jsonb,   -- Allergen[]
-  cuisine      text        null,                            -- CuisineTag
-  image        text        null,
-  source_url   text        null,
-  origin       text        not null default 'community',
-  created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now()
+  id              text        primary key,
+  title           text        not null,
+  title_en        text        null,                            -- English title (falls back to title)
+  ingredients     jsonb       not null default '[]'::jsonb,    -- [{name, canonicalId, quantity, unit}]
+  instructions    text        not null default '',
+  instructions_en text        null,                            -- English instructions (falls back to instructions)
+  prep_time       integer     not null default 0,
+  servings        integer     null,                            -- portions the recipe yields
+  difficulty      text        not null default 'easy',
+  tags            jsonb       not null default '[]'::jsonb,    -- DietTag[]
+  allergens       jsonb       not null default '[]'::jsonb,    -- Allergen[]
+  cuisine         text        null,                            -- CuisineTag
+  image           text        null,
+  source_url      text        null,
+  origin          text        not null default 'community',
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
 );
 
 -- Row Level Security: anyone (even anonymous) may READ; nobody may write via RLS.
 alter table public.recipes enable row level security;
 
--- Migration for tables created before `cuisine` existed (safe to re-run)
+-- Migrations for tables created before these columns existed (safe to re-run)
 alter table public.recipes add column if not exists cuisine text null;
+alter table public.recipes add column if not exists title_en text null;
+alter table public.recipes add column if not exists instructions_en text null;
+alter table public.recipes add column if not exists servings integer null;
 
 create policy "Anyone can read recipes"
   on public.recipes for select

@@ -383,3 +383,155 @@ on conflict (id) do update set
   cuisine = excluded.cuisine,
   origin = excluded.origin,
   updated_at = now();
+
+-- =============================================================================
+-- Lote novo (detalhado + porções) — PT-BR. Inclui a coluna `servings`.
+-- Garante as colunas mesmo em tabelas antigas (seguro re-rodar).
+-- =============================================================================
+alter table public.recipes add column if not exists servings integer null;
+
+insert into public.recipes (id, title, ingredients, instructions, prep_time, servings, difficulty, tags, allergens, cuisine, origin)
+values
+  -- ===== BRASILEIRA =====
+  ('comm-71','Arroz de forno',
+   '[{"name":"Arroz","canonicalId":"arroz"},{"name":"Presunto","canonicalId":"presunto"},{"name":"Queijo","canonicalId":"queijo"},{"name":"Milho Verde","canonicalId":"milho-verde"},{"name":"Ovo","canonicalId":"ovo"}]'::jsonb,
+   E'1. Use 3 xícaras de arroz já cozido (sobra de arroz funciona muito bem). Pré-aqueça o forno a 200 °C.\n2. Em uma tigela, misture o arroz, o presunto picado, o milho escorrido e metade do queijo ralado. Acerte o sal.\n3. Bata os ovos e incorpore à mistura — eles dão liga ao gratinado.\n4. Transfira para um refratário untado, cubra com o queijo restante e leve ao forno por 20 a 25 minutos, até dourar por cima.\n💡 Dica: um fio de requeijão entre as camadas deixa o arroz de forno bem mais cremoso.',
+   45,4,'medium','["sem_gluten"]'::jsonb,'["leite","ovo"]'::jsonb,'brasileira','community'),
+
+  ('comm-72','Cuscuz nordestino',
+   '[{"name":"Cuscuz","canonicalId":"cuscuz"},{"name":"Linguiça","canonicalId":"linguica"},{"name":"Ovo","canonicalId":"ovo"},{"name":"Manteiga","canonicalId":"manteiga"}]'::jsonb,
+   E'1. Hidrate a flocão de milho (cuscuz) com água e sal: umedeça aos poucos, mexendo com as mãos, até ficar úmido mas solto (descanse 5 minutos).\n2. Frite a linguiça fatiada em fogo médio até dourar e solte a gordura; reserve.\n3. Frite os ovos na manteiga, do jeito que preferir.\n4. Cozinhe o cuscuz na cuscuzeira (ou panela com peneira) por 8 a 10 minutos no vapor, até firmar.\n5. Desenforme, regue com um pouco de manteiga derretida e sirva com a linguiça e o ovo por cima.\n💡 Dica: o ponto da hidratação é quando você aperta o floco e ele se mantém unido sem empapar.',
+   30,4,'easy','[]'::jsonb,'["leite","ovo"]'::jsonb,'brasileira','community'),
+
+  ('comm-73','Sopa de legumes',
+   '[{"name":"Cenoura","canonicalId":"cenoura"},{"name":"Batata","canonicalId":"batata"},{"name":"Abobrinha","canonicalId":"abobrinha"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Tomate","canonicalId":"tomate"}]'::jsonb,
+   E'1. Pique todos os legumes em cubos médios (assim cozinham por igual).\n2. Em uma panela, refogue a cebola em um fio de azeite por 2 minutos, junte o tomate e cozinhe até desmanchar.\n3. Acrescente a cenoura e a batata, cubra com 1,5 litro de água quente e cozinhe em fogo médio por 15 minutos.\n4. Junte a abobrinha (que cozinha mais rápido) e cozinhe mais 8 minutos, até tudo ficar macio. Acerte o sal.\n5. Para uma sopa cremosa, bata metade no liquidificador e volte à panela.\n💡 Dica: finalize com salsinha e um fio de azeite cru — realça o sabor dos legumes.',
+   35,4,'easy','["vegetariano","vegano","sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'brasileira','community'),
+
+  ('comm-74','Purê de batata',
+   '[{"name":"Batata","canonicalId":"batata"},{"name":"Leite","canonicalId":"leite"},{"name":"Manteiga","canonicalId":"manteiga"}]'::jsonb,
+   E'1. Descasque e corte as batatas em pedaços iguais. Cozinhe em água com sal por 15 a 20 minutos, até espetar fácil com o garfo.\n2. Escorra muito bem e amasse ainda quentes (batata fria deixa o purê empelotado).\n3. Volte a panela ao fogo baixo, junte a manteiga e o leite morno aos poucos, mexendo, até ficar liso e cremoso.\n4. Acerte o sal e uma pitada de noz-moscada, se tiver. Sirva quente.\n💡 Dica: não use mixer/liquidificador — a batata vira goma. Amasse com espremedor ou garfo.',
+   25,4,'easy','["vegetariano","sem_gluten"]'::jsonb,'["leite"]'::jsonb,'brasileira','community'),
+
+  ('comm-75','Carne de panela',
+   '[{"name":"Carne Bovina","canonicalId":"carne-bovina"},{"name":"Batata","canonicalId":"batata"},{"name":"Cenoura","canonicalId":"cenoura"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Alho","canonicalId":"alho"},{"name":"Tomate","canonicalId":"tomate"}]'::jsonb,
+   E'1. Tempere a carne em cubos (acém ou músculo) com sal, alho e pimenta. Em fogo alto, doure bem em um fio de óleo, em porções, para selar.\n2. Junte a cebola e o tomate picados e refogue 3 minutos.\n3. Cubra com água quente até a metade da carne, tampe e cozinhe em fogo baixo por 1 hora (ou 25 minutos na pressão), até começar a amaciar.\n4. Adicione a batata e a cenoura em pedaços e cozinhe mais 20 minutos, até a carne desmanchar e o molho encorpar.\n💡 Dica: selar a carne em fogo alto antes de cozinhar é o que dá cor e sabor ao caldo.',
+   90,4,'medium','["sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'brasileira','community'),
+
+  ('comm-76','Frango assado com batatas',
+   '[{"name":"Frango","canonicalId":"frango"},{"name":"Batata","canonicalId":"batata"},{"name":"Alho","canonicalId":"alho"},{"name":"Limão","canonicalId":"limao"},{"name":"Azeite","canonicalId":"azeite"}]'::jsonb,
+   E'1. Tempere os pedaços de frango com alho amassado, suco de limão, sal, pimenta e azeite. Deixe marinar 30 minutos (ou na geladeira de um dia para o outro).\n2. Pré-aqueça o forno a 200 °C. Espalhe o frango e as batatas em cubos numa assadeira, regando tudo com azeite.\n3. Asse por 40 a 50 minutos, virando na metade, até o frango ficar dourado e as batatas macias por dentro e crocantes por fora.\n4. O frango está no ponto quando o suco sai transparente ao furar a parte mais grossa.\n💡 Dica: não amontoe os pedaços na assadeira — com espaço entre eles, tudo doura em vez de cozinhar no vapor.',
+   60,4,'easy','["sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'brasileira','community'),
+
+  ('comm-77','Arroz à grega',
+   '[{"name":"Arroz","canonicalId":"arroz"},{"name":"Cenoura","canonicalId":"cenoura"},{"name":"Ervilha","canonicalId":"ervilha"},{"name":"Uva Passa","canonicalId":"passas"},{"name":"Milho Verde","canonicalId":"milho-verde"}]'::jsonb,
+   E'1. Refogue 1 xícara de arroz em um fio de azeite com um pouco de cebola por 1 minuto.\n2. Cubra com 2 xícaras de água fervente e sal, e cozinhe tampado em fogo baixo por 15 minutos.\n3. Enquanto isso, cozinhe rapidamente a cenoura em cubinhos e a ervilha (3 a 4 minutos) só para amaciar.\n4. Quando o arroz estiver pronto, misture a cenoura, a ervilha, o milho e as passas, soltando com um garfo.\n💡 Dica: deixe as passas de molho em água morna por 10 minutos — elas incham e ficam mais macias e doces.',
+   35,4,'easy','["vegetariano","vegano","sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'brasileira','community'),
+
+  ('comm-78','Picadinho de carne',
+   '[{"name":"Carne Bovina","canonicalId":"carne-bovina"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Alho","canonicalId":"alho"},{"name":"Tomate","canonicalId":"tomate"},{"name":"Batata","canonicalId":"batata"}]'::jsonb,
+   E'1. Corte a carne (patinho ou alcatra) em cubos bem pequenos. Tempere com sal e pimenta.\n2. Em fogo alto, doure a carne em um fio de óleo, em porções, sem amontoar, até pegar cor; reserve.\n3. Na mesma panela, refogue a cebola e o alho, junte o tomate picado e cozinhe até virar um molho.\n4. Volte a carne, adicione a batata em cubos pequenos e um pouco de água, tampe e cozinhe 20 minutos, até a batata amaciar e o molho encorpar.\n💡 Dica: sirva com arroz branco e um ovo frito por cima — vira um prato completo.',
+   40,4,'easy','["sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'brasileira','community'),
+
+  ('comm-79','Salada de batata',
+   '[{"name":"Batata","canonicalId":"batata"},{"name":"Ovo","canonicalId":"ovo"},{"name":"Maionese","canonicalId":"maionese"},{"name":"Cenoura","canonicalId":"cenoura"},{"name":"Cebolinha","canonicalId":"cebolinha"}]'::jsonb,
+   E'1. Cozinhe as batatas e a cenoura em cubos em água com sal por 10 a 12 minutos, até ficarem macias mas firmes (não podem desmanchar).\n2. Cozinhe os ovos por 10 minutos a partir da fervura para ficarem bem cozidos; descasque e pique.\n3. Escorra os legumes e deixe esfriar completamente (importante para a maionese não talhar).\n4. Misture tudo com a maionese, a cebolinha picada e sal a gosto. Leve à geladeira por 30 minutos antes de servir.\n💡 Dica: um toque de mostarda e um fio de limão na maionese deixam a salada menos enjoativa.',
+   25,4,'easy','["vegetariano","sem_gluten"]'::jsonb,'["ovo"]'::jsonb,'brasileira','community'),
+
+  -- ===== ITALIANA =====
+  ('comm-80','Sopa de tomate',
+   '[{"name":"Tomate","canonicalId":"tomate"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Alho","canonicalId":"alho"},{"name":"Manjericão","canonicalId":"manjericao"},{"name":"Creme de Leite","canonicalId":"creme-leite"}]'::jsonb,
+   E'1. Refogue a cebola e o alho picados em azeite por 2 minutos, até ficarem macios.\n2. Junte os tomates maduros picados (sem pele, se possível), uma pitada de açúcar (corta a acidez) e sal. Cozinhe por 15 minutos.\n3. Acrescente 2 xícaras de água quente e cozinhe mais 5 minutos.\n4. Bata tudo no liquidificador até ficar liso, volte à panela e incorpore o creme de leite em fogo baixo (não deixe ferver depois disso).\n5. Finalize com folhas de manjericão.\n💡 Dica: sirva com cubos de pão tostado no forno com azeite — croutons caseiros.',
+   30,4,'easy','["vegetariano","sem_gluten"]'::jsonb,'["leite"]'::jsonb,'italiana','community'),
+
+  ('comm-81','Frittata de legumes',
+   '[{"name":"Ovo","canonicalId":"ovo"},{"name":"Queijo","canonicalId":"queijo"},{"name":"Abobrinha","canonicalId":"abobrinha"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Pimentão","canonicalId":"pimentao"}]'::jsonb,
+   E'1. Pré-aqueça o forno a 180 °C. Refogue a cebola, o pimentão e a abobrinha em cubinhos numa frigideira que possa ir ao forno, por 5 minutos.\n2. Bata 6 ovos com sal, pimenta e o queijo ralado.\n3. Despeje os ovos sobre os legumes, mexa levemente e cozinhe no fogo por 3 minutos, até as bordas firmarem.\n4. Leve a frigideira ao forno por 10 a 12 minutos, até o centro firmar e a superfície dourar.\n5. Solte com uma espátula e sirva em fatias, quente ou fria.\n💡 Dica: a frittata é ótima para aproveitar sobras de legumes — use o que tiver na geladeira.',
+   25,4,'easy','["vegetariano","sem_gluten"]'::jsonb,'["ovo","leite"]'::jsonb,'italiana','community'),
+
+  ('comm-82','Massa ao pesto',
+   '[{"name":"Macarrão","canonicalId":"macarrao"},{"name":"Manjericão","canonicalId":"manjericao"},{"name":"Alho","canonicalId":"alho"},{"name":"Azeite","canonicalId":"azeite"},{"name":"Queijo","canonicalId":"queijo"},{"name":"Nozes","canonicalId":"nozes"}]'::jsonb,
+   E'1. Cozinhe o macarrão em água fervente com sal até al dente; reserve 1 concha da água antes de escorrer.\n2. No liquidificador ou pilão, bata o manjericão, o alho, as nozes, o queijo ralado e o azeite até formar uma pasta. Acerte o sal.\n3. Misture o pesto ao macarrão escorrido ainda quente, fora do fogo (calor demais escurece o pesto).\n4. Solte com um pouco da água do cozimento, até o molho envolver bem a massa.\n💡 Dica: nunca cozinhe o pesto — ele é misturado cru à massa para manter a cor verde e o frescor.',
+   25,4,'easy','["vegetariano"]'::jsonb,'["gluten","leite","castanhas"]'::jsonb,'italiana','community'),
+
+  ('comm-83','Salada de macarrão',
+   '[{"name":"Macarrão","canonicalId":"macarrao"},{"name":"Tomate","canonicalId":"tomate"},{"name":"Queijo","canonicalId":"queijo"},{"name":"Azeitona","canonicalId":"azeitona"},{"name":"Pepino","canonicalId":"pepino"}]'::jsonb,
+   E'1. Cozinhe o macarrão (de preferência parafuso) al dente, escorra e passe rapidamente na água fria para parar o cozimento.\n2. Pique o tomate, o pepino e o queijo em cubinhos e fatie as azeitonas.\n3. Misture tudo com o macarrão, regue com azeite, um toque de vinagre ou limão e sal.\n4. Leve à geladeira por pelo menos 30 minutos antes de servir — fica melhor bem gelada.\n💡 Dica: tempere só na hora de servir; se temperar antes, o macarrão absorve o molho e resseca.',
+   30,4,'easy','["vegetariano"]'::jsonb,'["gluten","leite"]'::jsonb,'italiana','community'),
+
+  ('comm-84','Minestrone',
+   '[{"name":"Feijão","canonicalId":"feijao"},{"name":"Macarrão","canonicalId":"macarrao"},{"name":"Cenoura","canonicalId":"cenoura"},{"name":"Batata","canonicalId":"batata"},{"name":"Tomate","canonicalId":"tomate"},{"name":"Cebola","canonicalId":"cebola"}]'::jsonb,
+   E'1. Refogue a cebola em azeite, junte o tomate picado e cozinhe até desmanchar.\n2. Acrescente a cenoura e a batata em cubos pequenos e cubra com 1,5 litro de água quente. Cozinhe por 15 minutos.\n3. Junte o feijão já cozido (com um pouco do caldo) e deixe ferver mais 5 minutos.\n4. Adicione um punhado de macarrão curto e cozinhe até a massa ficar al dente. Acerte o sal.\n💡 Dica: um pedaço de casca de queijo cozido junto à sopa dá um sabor incrível (retire antes de servir).',
+   45,6,'easy','["vegetariano","vegano"]'::jsonb,'["gluten"]'::jsonb,'italiana','community'),
+
+  -- ===== MEXICANA =====
+  ('comm-85','Nachos',
+   '[{"name":"Tortilla","canonicalId":"tortilla"},{"name":"Queijo","canonicalId":"queijo"},{"name":"Feijão","canonicalId":"feijao"},{"name":"Tomate","canonicalId":"tomate"},{"name":"Pimentão","canonicalId":"pimentao"}]'::jsonb,
+   E'1. Corte as tortillas em triângulos e leve ao forno a 180 °C por 8 a 10 minutos (ou frite) até ficarem crocantes.\n2. Aqueça o feijão amassado com um pouco de cebola e cominho até virar uma pasta.\n3. Em um refratário, espalhe os chips, cubra com o feijão, o queijo ralado e o pimentão picado.\n4. Leve ao forno por 5 minutos, só até o queijo derreter.\n5. Finalize com tomate picado por cima.\n💡 Dica: monte e gratine só na hora de servir — os chips perdem a crocância se ficarem com o queijo parado.',
+   20,4,'easy','["vegetariano"]'::jsonb,'["gluten","leite"]'::jsonb,'mexicana','community'),
+
+  ('comm-86','Sopa de feijão',
+   '[{"name":"Feijão","canonicalId":"feijao"},{"name":"Tomate","canonicalId":"tomate"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Alho","canonicalId":"alho"},{"name":"Pimentão","canonicalId":"pimentao"},{"name":"Cominho","canonicalId":"cominho"}]'::jsonb,
+   E'1. Refogue a cebola, o alho e o pimentão picados em azeite por 3 minutos.\n2. Junte o tomate e o cominho e cozinhe 3 minutos, até formar um molho perfumado.\n3. Acrescente o feijão já cozido com o caldo e deixe ferver por 10 minutos.\n4. Bata metade no liquidificador e volte à panela para uma sopa encorpada. Acerte o sal.\n💡 Dica: sirva com chips de tortilla e um toque de limão — fica entre uma sopa e um chili.',
+   40,4,'easy','["vegetariano","vegano","sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'mexicana','community'),
+
+  -- ===== ASIÁTICA =====
+  ('comm-87','Frango agridoce',
+   '[{"name":"Frango","canonicalId":"frango"},{"name":"Abacaxi","canonicalId":"abacaxi"},{"name":"Pimentão","canonicalId":"pimentao"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Ketchup","canonicalId":"ketchup"}]'::jsonb,
+   E'1. Corte o frango em cubos, tempere com sal e doure em fogo alto numa frigideira ou wok até ficar dourado; reserve.\n2. Na mesma panela, salteie a cebola e o pimentão em pedaços por 2 minutos (devem ficar crocantes).\n3. Junte o abacaxi em cubos e refogue 1 minuto.\n4. Volte o frango, adicione o ketchup misturado com um pouco de água e vinagre, e mexa em fogo alto por 2 minutos, até criar um molho brilhante.\n💡 Dica: o segredo do agridoce é o fogo alto e rápido — os legumes ficam crocantes e o molho encorpa sem cozinhar demais.',
+   30,4,'medium','["sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'asiatica','community'),
+
+  ('comm-88','Salada oriental de pepino',
+   '[{"name":"Pepino","canonicalId":"pepino"},{"name":"Shoyu","canonicalId":"shoyu"},{"name":"Gergelim","canonicalId":"gergelim"},{"name":"Vinagre","canonicalId":"vinagre"},{"name":"Alho","canonicalId":"alho"}]'::jsonb,
+   E'1. Amasse levemente os pepinos com a lateral da faca e corte em pedaços irregulares (assim absorvem mais o molho).\n2. Polvilhe com sal e deixe descansar 10 minutos; escorra a água que soltar.\n3. Misture shoyu, vinagre, um fio de óleo de gergelim (ou azeite) e o alho amassado.\n4. Regue os pepinos com o molho, polvilhe gergelim torrado e sirva gelado.\n💡 Dica: torre o gergelim numa frigideira seca por 1 minuto — o aroma fica muito mais intenso.',
+   10,4,'easy','["vegetariano","vegano","sem_lactose"]'::jsonb,'["soja","gluten"]'::jsonb,'asiatica','community'),
+
+  ('comm-89','Sopa oriental de macarrão',
+   '[{"name":"Macarrão","canonicalId":"macarrao"},{"name":"Ovo","canonicalId":"ovo"},{"name":"Cenoura","canonicalId":"cenoura"},{"name":"Shoyu","canonicalId":"shoyu"},{"name":"Cebolinha","canonicalId":"cebolinha"}]'::jsonb,
+   E'1. Ferva 1 litro de água com 2 colheres de shoyu e um pouco de alho e gengibre, se tiver, formando um caldo.\n2. Junte a cenoura em tiras finas e cozinhe 3 minutos.\n3. Adicione o macarrão e cozinhe conforme a embalagem, até ficar al dente.\n4. Cozinhe os ovos à parte (6 a 7 minutos para gema cremosa), descasque e corte ao meio.\n5. Sirva a sopa em tigelas com o ovo por cima e bastante cebolinha picada.\n💡 Dica: não cozinhe o macarrão direto no caldo por muito tempo — ele solta amido e deixa a sopa turva.',
+   25,4,'easy','["vegetariano"]'::jsonb,'["gluten","ovo","soja"]'::jsonb,'asiatica','community'),
+
+  -- ===== INDIANA =====
+  ('comm-90','Arroz com curry e ervilha',
+   '[{"name":"Arroz","canonicalId":"arroz"},{"name":"Curry","canonicalId":"curry"},{"name":"Ervilha","canonicalId":"ervilha"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Leite de Coco","canonicalId":"leite-coco"}]'::jsonb,
+   E'1. Refogue a cebola picada em um fio de óleo até dourar. Junte 1 colher de curry e mexa por 30 segundos, até liberar o aroma (não deixe queimar).\n2. Acrescente 1 xícara de arroz e refogue 1 minuto para envolver no tempero.\n3. Cubra com 1 xícara de água e 1 xícara de leite de coco, adicione sal e a ervilha, e cozinhe tampado em fogo baixo por 15 minutos.\n4. Desligue e deixe descansar 5 minutos antes de soltar com um garfo.\n💡 Dica: fritar o curry rapidamente no óleo antes de adicionar o líquido é o que desenvolve todo o sabor das especiarias.',
+   30,4,'easy','["vegetariano","vegano","sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'indiana','community'),
+
+  ('comm-91','Sopa de lentilha temperada',
+   '[{"name":"Lentilha","canonicalId":"lentilha"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Alho","canonicalId":"alho"},{"name":"Cenoura","canonicalId":"cenoura"},{"name":"Tomate","canonicalId":"tomate"},{"name":"Cominho","canonicalId":"cominho"}]'::jsonb,
+   E'1. Refogue a cebola, o alho e o cominho em azeite por 2 minutos, até perfumar.\n2. Junte o tomate e a cenoura picados e refogue mais 3 minutos.\n3. Adicione 1 xícara de lentilha (não precisa de molho) e cubra com 1 litro de água quente.\n4. Cozinhe em fogo médio por 25 a 30 minutos, até a lentilha desmanchar e a sopa encorpar. Acerte o sal.\n💡 Dica: um fio de limão na hora de servir ilumina o sabor terroso da lentilha.',
+   45,4,'easy','["vegetariano","vegano","sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'indiana','community'),
+
+  -- ===== ÁRABE =====
+  ('comm-92','Mujadara (arroz com lentilha)',
+   '[{"name":"Arroz","canonicalId":"arroz"},{"name":"Lentilha","canonicalId":"lentilha"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Cominho","canonicalId":"cominho"}]'::jsonb,
+   E'1. Cozinhe a lentilha em água por 15 minutos, até ficar quase macia mas ainda firme; escorra.\n2. Enquanto isso, frite 2 cebolas fatiadas finas em óleo, em fogo médio, por 12 a 15 minutos, mexendo, até ficarem bem douradas e crocantes — elas são a alma do prato.\n3. Em uma panela, refogue um pouco da cebola com cominho, junte o arroz e a lentilha.\n4. Cubra com água na proporção 2 para 1, tempere com sal e cozinhe tampado em fogo baixo por 15 minutos.\n5. Sirva com a cebola caramelizada por cima.\n💡 Dica: tenha paciência com a cebola — ela precisa dourar devagar para ficar doce e crocante, sem queimar.',
+   45,4,'medium','["vegetariano","vegano","sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'arabe','community'),
+
+  ('comm-93','Wrap de frango',
+   '[{"name":"Tortilla","canonicalId":"tortilla"},{"name":"Frango","canonicalId":"frango"},{"name":"Alface","canonicalId":"alface"},{"name":"Tomate","canonicalId":"tomate"},{"name":"Requeijão","canonicalId":"requeijao"}]'::jsonb,
+   E'1. Tempere o frango em tiras com sal, alho e pimenta e grelhe em fogo alto por 4 a 5 minutos, até dourar.\n2. Aqueça rapidamente a tortilla numa frigideira seca, só para ficar maleável.\n3. Espalhe o requeijão sobre a tortilla, distribua o frango, a alface rasgada e o tomate em fatias finas.\n4. Dobre as laterais e enrole apertado. Se quiser, grelhe o wrap fechado por 1 minuto de cada lado para selar.\n💡 Dica: não exagere no recheio — um wrap muito cheio se desfaz na hora de enrolar e comer.',
+   15,2,'easy','[]'::jsonb,'["gluten","leite"]'::jsonb,'arabe','community'),
+
+  -- ===== AMERICANA / MEDITERRÂNEA =====
+  ('comm-94','Sopa de milho',
+   '[{"name":"Milho Verde","canonicalId":"milho-verde"},{"name":"Batata","canonicalId":"batata"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Leite","canonicalId":"leite"},{"name":"Creme de Leite","canonicalId":"creme-leite"}]'::jsonb,
+   E'1. Refogue a cebola picada na manteiga ou azeite por 2 minutos.\n2. Junte a batata em cubos e o milho, cubra com 1 litro de água quente e cozinhe por 15 minutos, até a batata amaciar.\n3. Bata tudo no liquidificador com o leite até ficar bem liso e, se quiser, passe por uma peneira.\n4. Volte à panela, incorpore o creme de leite em fogo baixo e aqueça sem ferver. Acerte o sal.\n💡 Dica: reserve algumas colheres de milho inteiro para jogar por cima — dá textura à sopa cremosa.',
+   35,4,'easy','["vegetariano","sem_gluten"]'::jsonb,'["leite"]'::jsonb,'americana','community'),
+
+  ('comm-95','Salada de grão-de-bico',
+   '[{"name":"Grão-de-bico","canonicalId":"grao-de-bico"},{"name":"Tomate","canonicalId":"tomate"},{"name":"Pepino","canonicalId":"pepino"},{"name":"Cebola","canonicalId":"cebola"},{"name":"Azeite","canonicalId":"azeite"}]'::jsonb,
+   E'1. Use grão-de-bico já cozido (ou de lata, bem escorrido e lavado).\n2. Pique o tomate, o pepino e a cebola roxa em cubinhos pequenos.\n3. Misture tudo com o grão-de-bico, regue com bastante azeite, suco de limão e sal.\n4. Deixe descansar 15 minutos para os sabores se misturarem antes de servir.\n💡 Dica: deixe a cebola picada de molho em água gelada por 10 minutos — perde o ardido sem perder a crocância.',
+   15,4,'easy','["vegetariano","vegano","sem_gluten","sem_lactose"]'::jsonb,'[]'::jsonb,'mediterranea','community')
+on conflict (id) do update set
+  title = excluded.title,
+  ingredients = excluded.ingredients,
+  instructions = excluded.instructions,
+  prep_time = excluded.prep_time,
+  servings = excluded.servings,
+  difficulty = excluded.difficulty,
+  tags = excluded.tags,
+  allergens = excluded.allergens,
+  cuisine = excluded.cuisine,
+  origin = excluded.origin,
+  updated_at = now();

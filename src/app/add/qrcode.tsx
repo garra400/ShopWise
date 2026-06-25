@@ -9,8 +9,10 @@ import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { parseNfceUrl, fetchNfceItems } from '@/services/nfce';
 import { setPendingScan } from '@/services/scanHandoff';
+import { useT } from '@/i18n';
 
 export default function QrCodeScreen() {
+  const t = useT();
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const handled = useRef(false);
@@ -29,9 +31,7 @@ export default function QrCodeScreen() {
       setPendingScan(items);
       router.replace('/add/scan');
     } else {
-      setErrorMsg(
-        'Li o QR da nota, mas não consegui buscar os itens automaticamente (a página da SEFAZ pode estar indisponível ou em formato diferente). Você pode adicionar pela foto/manual.',
-      );
+      setErrorMsg(t('qr.error'));
       setStatus('error');
     }
   }
@@ -49,9 +49,9 @@ export default function QrCodeScreen() {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
         <Ionicons name="camera-outline" size={48} color={theme.textSecondary} />
-        <ThemedText style={styles.msg}>Precisamos da câmera para ler o QR Code da nota fiscal.</ThemedText>
-        <Button title="Permitir câmera" onPress={requestPermission} />
-        <Button title="Voltar" variant="secondary" onPress={() => router.back()} />
+        <ThemedText style={styles.msg}>{t('qr.permission')}</ThemedText>
+        <Button title={t('qr.allow')} onPress={requestPermission} />
+        <Button title={t('common.back')} variant="secondary" onPress={() => router.back()} />
       </View>
     );
   }
@@ -60,7 +60,7 @@ export default function QrCodeScreen() {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={theme.primary} />
-        <ThemedText style={styles.msg}>Buscando os itens da nota fiscal…</ThemedText>
+        <ThemedText style={styles.msg}>{t('qr.loading')}</ThemedText>
       </View>
     );
   }
@@ -70,9 +70,9 @@ export default function QrCodeScreen() {
       <View style={[styles.center, { backgroundColor: theme.background }]}>
         <Ionicons name="alert-circle-outline" size={48} color={theme.textSecondary} />
         <ThemedText style={styles.msg}>{errorMsg}</ThemedText>
-        <Button title="Adicionar pela foto / manual" onPress={() => router.replace('/add/scan')} />
+        <Button title={t('qr.addPhotoManual')} onPress={() => router.replace('/add/scan')} />
         <Button
-          title="Tentar outro QR"
+          title={t('qr.tryAnother')}
           variant="secondary"
           onPress={() => {
             handled.current = false;
@@ -92,10 +92,10 @@ export default function QrCodeScreen() {
       />
       <View style={styles.overlay} pointerEvents="none">
         <View style={[styles.frame, { borderColor: '#ffffff' }]} />
-        <ThemedText style={styles.hint}>Aponte para o QR Code do cupom fiscal</ThemedText>
+        <ThemedText style={styles.hint}>{t('qr.hint')}</ThemedText>
       </View>
       <View style={styles.bottomBar}>
-        <Button title="Cancelar" variant="secondary" onPress={() => router.back()} />
+        <Button title={t('common.cancel')} variant="secondary" onPress={() => router.back()} />
       </View>
     </View>
   );
