@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { loadFavorites, saveFavorites } from '@/services/storage';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { loadFavorites, saveFavorites, clearFavoritesStore } from '@/services/storage';
+import { useProducts } from '@/context/ProductsContext';
 
 interface FavoritesContextValue {
   favorites: string[];
@@ -16,15 +17,32 @@ const FavoritesContext = createContext<FavoritesContextValue>({
 });
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
+  // Favorites follow the active pantry scope (per account), mirroring products.
+  const { scope } = useProducts();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const prevScopeRef = useRef<string | null>(null);
 
   useEffect(() => {
-    loadFavorites().then((ids) => {
-      setFavorites(ids);
-      setLoading(false);
-    });
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const prev = prevScopeRef.current;
+      if (prev === 'guest' && scope !== 'guest') {
+        // First sign-in: merge the guest favorites into the account.
+        const [guestFavs, acctFavs] = await Promise.all([loadFavorites('guest'), loadFavorites(scope)]);
+        const merged = Array.from(new Set([...acctFavs, ...guestFavs]));
+        await saveFavorites(scope, merged);
+        if (guestFavs.length) await clearFavoritesStore('guest');
+        if (!cancelled) setFavorites(merged);
+      } else {
+        const ids = await loadFavorites(scope);
+        if (!cancelled) setFavorites(ids);
+      }
+      if (!cancelled) setLoading(false);
+      prevScopeRef.current = scope;
+    })();
+    return () => { cancelled = true; };
+  }, [scope]);
 
   const isFavorite = useCallback(
     (recipeId: string) => favorites.includes(recipeId),
@@ -36,10 +54,10 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       const next = prev.includes(recipeId)
         ? prev.filter((id) => id !== recipeId)
         : [...prev, recipeId];
-      saveFavorites(next);
+      saveFavorites(scope, next);
       return next;
     });
-  }, []);
+  }, [scope]);
 
   return (
     <FavoritesContext.Provider value={{ favorites, isFavorite, toggleFavorite, loading }}>

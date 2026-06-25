@@ -33,8 +33,11 @@ interface ProductsContextValue {
   updateProduct: (id: string, patch: Partial<Product>) => Promise<void>;
   removeProduct: (id: string) => Promise<void>;
   markConsumed: (id: string) => Promise<void>;
-  /** Mark several products as consumed in a single atomic update (loop-safe). */
-  markConsumedMany: (ids: string[]) => Promise<void>;
+  /**
+   * Apply a recipe's consumption to the pantry in one atomic update: each entry
+   * either marks a product consumed or sets its remaining quantity (loop-safe).
+   */
+  consumeForRecipe: (deductions: { id: string; consume: boolean; quantity?: number }[]) => Promise<void>;
   renewExpiry: (id: string, newDate: string) => Promise<void>;
   reseedProducts: () => Promise<void>;
   clearProducts: () => Promise<void>;
@@ -57,7 +60,7 @@ const ProductsContext = createContext<ProductsContextValue>({
   updateProduct: async () => {},
   removeProduct: async () => {},
   markConsumed: async () => {},
-  markConsumedMany: async () => {},
+  consumeForRecipe: async () => {},
   renewExpiry: async () => {},
   reseedProducts: async () => {},
   clearProducts: async () => {},
@@ -104,10 +107,12 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       if (newScope === scope) return;
 
       // First sign-in with a non-empty guest pantry → move it into the account.
-      if (opts?.migrate && scope === 'guest' && newScope !== 'guest' && products.length > 0) {
+      // Skip the bundled example products (seed-*) so they don't pollute the account.
+      const guestReal = products.filter((p) => !p.id.startsWith('seed-'));
+      if (opts?.migrate && scope === 'guest' && newScope !== 'guest' && guestReal.length > 0) {
         const accountExisting = await loadProducts(newScope);
         const byId = new Map(accountExisting.map((p) => [p.id, p]));
-        for (const g of products) if (!byId.has(g.id)) byId.set(g.id, g);
+        for (const g of guestReal) if (!byId.has(g.id)) byId.set(g.id, g);
         const merged = Array.from(byId.values());
         await saveProducts(newScope, merged);
         await clearProductsStore('guest'); // the data lives in the account now
@@ -178,14 +183,17 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     [updateProduct]
   );
 
-  const markConsumedMany = useCallback(
-    async (ids: string[]) => {
-      if (ids.length === 0) return;
-      const set = new Set(ids);
+  const consumeForRecipe = useCallback(
+    async (deductions: { id: string; consume: boolean; quantity?: number }[]) => {
+      if (deductions.length === 0) return;
+      const byId = new Map(deductions.map((d) => [d.id, d]));
       const now = new Date().toISOString();
-      const updated = products.map((p) =>
-        set.has(p.id) ? { ...p, consumed: true, updatedAt: now } : p
-      );
+      const updated = products.map((p) => {
+        const d = byId.get(p.id);
+        if (!d) return p;
+        if (d.consume) return { ...p, consumed: true, updatedAt: now };
+        return { ...p, quantity: d.quantity ?? p.quantity, updatedAt: now };
+      });
       await persist(updated);
     },
     [products, persist]
@@ -252,7 +260,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
         updateProduct,
         removeProduct,
         markConsumed,
-        markConsumedMany,
+        consumeForRecipe,
         renewExpiry,
         reseedProducts,
         clearProducts,

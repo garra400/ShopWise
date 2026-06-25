@@ -23,7 +23,7 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { hasSupabase } from '@/config/integrations';
 import { getSupabase, productToRow, rowToProduct, ProductRow } from '@/services/supabase';
 import { useProducts } from '@/context/ProductsContext';
-import { loadLastSyncAt, saveLastSyncAt, clearProductsStore } from '@/services/storage';
+import { loadLastSyncAt, saveLastSyncAt, clearProductsStore, clearFavoritesStore } from '@/services/storage';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -51,6 +51,10 @@ interface SyncContextValue {
   awaitingConfirmation: boolean;
   /** The e-mail awaiting confirmation (for the OTP screen), or null. */
   pendingEmail: string | null;
+  /** True during the password-reset flow (waiting for the recovery code). */
+  awaitingPasswordReset: boolean;
+  /** The e-mail awaiting the recovery code, or null. */
+  pendingResetEmail: string | null;
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string): Promise<void>;
   /** Verify the 6-digit code e-mailed after sign-up. */
@@ -59,6 +63,12 @@ interface SyncContextValue {
   resendOtp(): Promise<void>;
   /** Abandon the pending confirmation (back to the sign-in form). */
   cancelConfirmation(): void;
+  /** Start password recovery: e-mails a reset code to the address. */
+  requestPasswordReset(email: string): Promise<void>;
+  /** Finish recovery: verify the code and set the new password. */
+  confirmPasswordReset(token: string, newPassword: string): Promise<void>;
+  /** Abandon the password-reset flow. */
+  cancelPasswordReset(): void;
   signOut(): Promise<void>;
   syncNow(): Promise<void>;
   /** Delete the account and all its data (LGPD right to erasure). */
@@ -74,11 +84,16 @@ const NO_OP_CONTEXT: SyncContextValue = {
   error: null,
   awaitingConfirmation: false,
   pendingEmail: null,
+  awaitingPasswordReset: false,
+  pendingResetEmail: null,
   signIn: async () => {},
   signUp: async () => {},
   verifyOtp: async () => {},
   resendOtp: async () => {},
   cancelConfirmation: () => {},
+  requestPasswordReset: async () => {},
+  confirmPasswordReset: async () => {},
+  cancelPasswordReset: () => {},
   signOut: async () => {},
   syncNow: async () => {},
   deleteAccount: async () => {},
@@ -130,6 +145,8 @@ function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [awaitingPasswordReset, setAwaitingPasswordReset] = useState(false);
+  const [pendingResetEmail, setPendingResetEmail] = useState<string | null>(null);
 
   // Refs to avoid stale-closure issues in debounced callbacks.
   const userRef = useRef<SyncUser | null>(null);
@@ -264,6 +281,50 @@ function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
     setError(null);
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const sb = getSupabase();
+    if (!sb) return;
+    setError(null);
+    const { error: rErr } = await sb.auth.resetPasswordForEmail(email);
+    if (rErr) {
+      setError(friendlyAuthError(rErr.message));
+      return;
+    }
+    setPendingResetEmail(email);
+    setAwaitingPasswordReset(true);
+  }, []);
+
+  const confirmPasswordReset = useCallback(async (token: string, newPassword: string) => {
+    const sb = getSupabase();
+    if (!sb || !pendingResetEmail) return;
+    setError(null);
+    // Verify the recovery code → establishes a session for the user.
+    const { error: vErr } = await sb.auth.verifyOtp({
+      email: pendingResetEmail,
+      token: token.trim(),
+      type: 'recovery',
+    });
+    if (vErr) {
+      setError(friendlyAuthError(vErr.message));
+      return;
+    }
+    // Set the new password on the now-authenticated user.
+    const { error: uErr } = await sb.auth.updateUser({ password: newPassword });
+    if (uErr) {
+      setError(friendlyAuthError(uErr.message));
+      return;
+    }
+    setAwaitingPasswordReset(false);
+    setPendingResetEmail(null);
+    // onAuthStateChange already signed the user in and switched the pantry scope.
+  }, [pendingResetEmail]);
+
+  const cancelPasswordReset = useCallback(() => {
+    setAwaitingPasswordReset(false);
+    setPendingResetEmail(null);
+    setError(null);
+  }, []);
+
   const signOut = useCallback(async () => {
     const sb = getSupabase();
     if (!sb) return;
@@ -288,6 +349,7 @@ function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
       // ignore — we still sign out and wipe local below
     } finally {
       await clearProductsStore(u.id); // remove this account's local cached pantry
+      await clearFavoritesStore(u.id); // and its favorites (LGPD: erase all local data)
       await sb.auth.signOut(); // → onAuthStateChange → guest scope
     }
   }, []);
@@ -427,11 +489,16 @@ function ActiveSyncProvider({ children }: { children: React.ReactNode }) {
         error,
         awaitingConfirmation,
         pendingEmail,
+        awaitingPasswordReset,
+        pendingResetEmail,
         signIn,
         signUp,
         verifyOtp,
         resendOtp,
         cancelConfirmation,
+        requestPasswordReset,
+        confirmPasswordReset,
+        cancelPasswordReset,
         signOut,
         syncNow,
         deleteAccount,

@@ -11,7 +11,7 @@ import { useSettings } from '@/context/SettingsContext';
 import { useT } from '@/i18n';
 import { matchRecipe, getAvailableProducts, ingredientMatchesProduct } from '@/utils/recipes';
 import { ingredientDisplayName } from '@/utils/ingredients';
-import { formatQuantity } from '@/utils/units';
+import { formatQuantity, convertQuantity } from '@/utils/units';
 import { dietTagLabel, allergenLabel, cuisineLabel } from '@/utils/diet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -27,7 +27,7 @@ export default function RecipeDetailScreen() {
   const t = useT();
   const { settings } = useSettings();
   const lang = settings.language === 'en' ? 'en' : 'pt';
-  const { products, markConsumedMany } = useProducts();
+  const { products, consumeForRecipe } = useProducts();
   const { isFavorite, toggleFavorite } = useFavorites();
 
   // Resolve recipe: local DB first, then API in-memory cache
@@ -49,23 +49,41 @@ export default function RecipeDetailScreen() {
   const available = getAvailableProducts(products);
   const match = matchRecipe(recipe, available);
 
-  // Pantry products that match this recipe's ingredients (what we can "use up").
-  const usableProducts = available.filter((p) =>
-    recipe.ingredients.some((ing) => ingredientMatchesProduct(ing, p)),
-  );
+  // Map each recipe INGREDIENT to one pantry product and deduct its amount —
+  // ingredient-centric so two products matching the same ingredient aren't
+  // double-deducted. Subtract when units reconcile; else (or if it runs out)
+  // mark the product fully consumed.
+  const recipeDeductions: { id: string; consume: boolean; quantity?: number }[] = [];
+  const deductedProducts: typeof available = [];
+  const takenIds = new Set<string>();
+  for (const ing of recipe.ingredients) {
+    const p = available.find((pr) => !takenIds.has(pr.id) && ingredientMatchesProduct(ing, pr));
+    if (!p) continue;
+    takenIds.add(p.id);
+    deductedProducts.push(p);
+    let entry: { id: string; consume: boolean; quantity?: number } = { id: p.id, consume: true };
+    if (p.quantity != null && ing.quantity != null) {
+      const used = convertQuantity(ing.quantity, ing.unit, p.unit);
+      if (used != null) {
+        const remaining = Math.round((p.quantity - used) * 100) / 100;
+        if (remaining > 0.001) entry = { id: p.id, consume: false, quantity: remaining };
+      }
+    }
+    recipeDeductions.push(entry);
+  }
 
   function handleMadeIt() {
-    if (usableProducts.length === 0) {
+    if (deductedProducts.length === 0) {
       if (Platform.OS === 'web') window.alert(t('recipe.markDone.none'));
       else Alert.alert(t('recipe.markDone'), t('recipe.markDone.none'));
       return;
     }
-    const list = usableProducts.map((p) => `• ${p.name}`).join('\n');
+    const list = deductedProducts.map((p) => `• ${p.name}`).join('\n');
     const apply = () => {
-      markConsumedMany(usableProducts.map((p) => p.id));
+      consumeForRecipe(recipeDeductions);
       const doneMsg = t(
-        usableProducts.length === 1 ? 'recipe.markDone.done' : 'recipe.markDone.done_other',
-        { n: usableProducts.length },
+        deductedProducts.length === 1 ? 'recipe.markDone.done' : 'recipe.markDone.done_other',
+        { n: deductedProducts.length },
       );
       if (Platform.OS === 'web') window.alert(doneMsg);
       else Alert.alert(t('recipe.markDone'), doneMsg);
@@ -210,7 +228,7 @@ export default function RecipeDetailScreen() {
       </ThemedView>
 
       {/* Mark as cooked → use up matching pantry items */}
-      {usableProducts.length > 0 && (
+      {deductedProducts.length > 0 && (
         <Button
           title={`✓ ${t('recipe.markDone')}`}
           onPress={handleMadeIt}

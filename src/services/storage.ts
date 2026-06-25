@@ -4,10 +4,10 @@ import { Product, Settings } from '@/types';
 const KEYS = {
   settings: 'shopwise:settings',
   lastSyncAt: 'shopwise:lastSyncAt',
-  favorites: 'shopwise:favorites',
   // Legacy (pre-account) flat keys — migrated once into the 'guest' scope.
   legacyProducts: 'shopwise:products',
   legacySeeded: 'shopwise:seeded',
+  legacyFavorites: 'shopwise:favorites',
 } as const;
 
 /**
@@ -18,6 +18,7 @@ const KEYS = {
 export type Scope = string; // userId | 'guest'
 const productsKey = (scope: Scope) => `shopwise:products:${scope}`;
 const seededKey = (scope: Scope) => `shopwise:seeded:${scope}`;
+const favoritesKey = (scope: Scope) => `shopwise:favorites:${scope}`;
 
 /**
  * One-time migration of the old flat keys (shopwise:products / :seeded) into the
@@ -41,6 +42,14 @@ export async function migrateLegacyToGuest(): Promise<void> {
         await AsyncStorage.setItem(dest, legacySeeded);
       }
       await AsyncStorage.removeItem(KEYS.legacySeeded);
+    }
+    const legacyFavorites = await AsyncStorage.getItem(KEYS.legacyFavorites);
+    if (legacyFavorites != null) {
+      const dest = favoritesKey('guest');
+      if ((await AsyncStorage.getItem(dest)) == null) {
+        await AsyncStorage.setItem(dest, legacyFavorites);
+      }
+      await AsyncStorage.removeItem(KEYS.legacyFavorites);
     }
   } catch {
     // best-effort migration
@@ -124,9 +133,9 @@ export async function saveSettings(s: Settings): Promise<void> {
   }
 }
 
-export async function loadFavorites(): Promise<string[]> {
+export async function loadFavorites(scope: Scope): Promise<string[]> {
   try {
-    const raw = await AsyncStorage.getItem(KEYS.favorites);
+    const raw = await AsyncStorage.getItem(favoritesKey(scope));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as string[]) : [];
@@ -135,9 +144,17 @@ export async function loadFavorites(): Promise<string[]> {
   }
 }
 
-export async function saveFavorites(ids: string[]): Promise<void> {
+export async function saveFavorites(scope: Scope, ids: string[]): Promise<void> {
   try {
-    await AsyncStorage.setItem(KEYS.favorites, JSON.stringify(ids));
+    await AsyncStorage.setItem(favoritesKey(scope), JSON.stringify(ids));
+  } catch {
+    // silently fail on storage errors
+  }
+}
+
+export async function clearFavoritesStore(scope: Scope): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(favoritesKey(scope));
   } catch {
     // silently fail on storage errors
   }

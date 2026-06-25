@@ -157,6 +157,15 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     'account.delete': 'Excluir minha conta e dados',
     'account.deleteTitle': 'Excluir conta',
     'account.deleteConfirm': 'Isto apaga sua conta e todos os seus dados da nuvem. A ação é permanente. Continuar?',
+    'account.forgot': 'Esqueci minha senha',
+    'account.resetTitle': 'Recuperar senha',
+    'account.resetHint': 'Digite seu e-mail; enviaremos um código para redefinir a senha.',
+    'account.resetSend': 'Enviar código',
+    'account.resetCodeHint': 'Código enviado para {email}. Digite o código e a nova senha.',
+    'account.newPassword': 'Nova senha',
+    'account.resetConfirm': 'Redefinir senha',
+    'account.resendIn': 'Reenviar em {s}s',
+    'home.guestBanner': 'Modo convidado — entrar para sincronizar',
 
     // Add menu
     'addmenu.how': 'Como você quer adicionar?',
@@ -410,6 +419,15 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     'account.delete': 'Delete my account and data',
     'account.deleteTitle': 'Delete account',
     'account.deleteConfirm': 'This deletes your account and all your cloud data. This action is permanent. Continue?',
+    'account.forgot': 'Forgot my password',
+    'account.resetTitle': 'Reset password',
+    'account.resetHint': "Enter your email; we'll send a code to reset your password.",
+    'account.resetSend': 'Send code',
+    'account.resetCodeHint': 'Code sent to {email}. Enter the code and your new password.',
+    'account.newPassword': 'New password',
+    'account.resetConfirm': 'Reset password',
+    'account.resendIn': 'Resend in {s}s',
+    'home.guestBanner': 'Guest mode — sign in to sync',
 
     // Add menu
     'addmenu.how': 'How do you want to add?',

@@ -55,7 +55,7 @@ function metricToImperial(qty: number, unit: string): { qty: number; unit: strin
     case 'g': return { qty: tidy(qty / 28.3495), unit: 'oz' };
     case 'kg': return { qty: tidy(qty * 2.20462), unit: 'lb' };
     case 'ml': return { qty: tidy(qty / 29.5735), unit: 'fl oz' };
-    case 'L': return { qty: tidy(qty * 4.22675), unit: 'cup' };
+    case 'L': return { qty: tidy(qty * 4.16667), unit: 'cup' }; // 1 cup = 240 ml
     default: return { qty, unit };
   }
 }
@@ -97,6 +97,21 @@ export function formatQuantity(
   const num = String(tidy(qty));
   if (!u) return num;
   return `${num} ${tokenFor(u, qty, lang)}`;
+}
+
+/**
+ * Convert a quantity between units of the SAME dimension (weight or volume).
+ * Returns null when not inter-convertible — different dimensions, or count/
+ * cooking units like 'un', 'xíc.', 'dentes' (only an exact same-unit match works).
+ */
+export function convertQuantity(qty: number, from: string | undefined, to: string | undefined): number | null {
+  if (from === to) return qty;
+  if (!from || !to) return null;
+  const WEIGHT: Record<string, number> = { g: 1, kg: 1000 };  // in grams
+  const VOLUME: Record<string, number> = { ml: 1, L: 1000 };  // in ml
+  if (from in WEIGHT && to in WEIGHT) return (qty * WEIGHT[from]) / WEIGHT[to];
+  if (from in VOLUME && to in VOLUME) return (qty * VOLUME[from]) / VOLUME[to];
+  return null;
 }
 
 /** Localized unit options for the manual add / edit selectors. */

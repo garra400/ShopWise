@@ -3,6 +3,7 @@ import { router, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLayoutEffect } from 'react';
 import { useProducts } from '@/context/ProductsContext';
+import { useSync } from '@/context/SyncContext';
 import { getStatus, statusLabel } from '@/utils/status';
 import { useT } from '@/i18n';
 import { useSettings } from '@/context/SettingsContext';
@@ -49,6 +50,7 @@ function Shortcut({
 export default function HomeScreen() {
   const theme = useTheme();
   const { products, loading } = useProducts();
+  const { user, enabled } = useSync();
   const navigation = useNavigation();
   const t = useT();
   const { settings } = useSettings();
@@ -126,6 +128,21 @@ export default function HomeScreen() {
         <Shortcut theme={theme} icon="restaurant-outline" label={t('home.shortcut.recipes')} onPress={() => router.push('/(tabs)/recipes')} />
         <Shortcut theme={theme} icon="time-outline" label={t('home.shortcut.expiring')} onPress={() => router.push('/(tabs)/expiring')} />
       </View>
+
+      {/* Guest-mode hint (only when cloud sync is available and not signed in) */}
+      {enabled && !user && (
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/settings')}
+          style={[styles.guestBanner, { backgroundColor: theme.primary + '14', borderColor: theme.primary + '40' }]}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
+          <ThemedText style={[styles.guestText, { color: theme.primary }]} numberOfLines={1}>
+            {t('home.guestBanner')}
+          </ThemedText>
+          <Ionicons name="chevron-forward" size={16} color={theme.primary} />
+        </TouchableOpacity>
+      )}
 
       {/* Para Vencer banner */}
       {expiringCount > 0 && (
@@ -209,6 +226,21 @@ const styles = StyleSheet.create({
   },
   shortcutLabel: {
     fontWeight: '600',
+  },
+  guestBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    marginBottom: Spacing.three,
+  },
+  guestText: {
+    flex: 1,
+    fontWeight: '600',
+    fontSize: 14,
   },
   sectionTitle: {
     fontSize: 13,

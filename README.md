@@ -100,6 +100,9 @@ O app funciona sem isso (modo convidado). Para habilitar contas:
    - Sem o `{{ .Token }}` no template, **o código não chega** e a confirmação falha.
    - Se preferir desligar a confirmação (Confirm email = OFF), o cadastro loga direto
      (o app detecta e pula a tela de código).
+4. **Recuperação de senha (esqueci a senha):** o app usa o mesmo esquema de código.
+   Em Email Templates → **"Reset password"**, inclua também `{{ .Token }}` (o app pede
+   o código + a nova senha na tela "Recuperar senha").
 
 ### Privacidade / LGPD (resumo)
 - Consentimento obrigatório no cadastro; guardamos só o **e-mail** e os itens da

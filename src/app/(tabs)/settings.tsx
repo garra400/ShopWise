@@ -1,6 +1,6 @@
 import { View, TextInput, Switch, ScrollView, StyleSheet, Alert, Platform, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSettings } from '@/context/SettingsContext';
 import { useProducts } from '@/context/ProductsContext';
 import { useSync } from '@/context/SyncContext';
@@ -36,7 +36,10 @@ export default function SettingsScreen() {
   const {
     enabled, user, syncing, lastSyncAt, error,
     awaitingConfirmation, pendingEmail,
-    signIn, signUp, verifyOtp, resendOtp, cancelConfirmation, signOut, syncNow, deleteAccount,
+    awaitingPasswordReset, pendingResetEmail,
+    signIn, signUp, verifyOtp, resendOtp, cancelConfirmation,
+    requestPasswordReset, confirmPasswordReset, cancelPasswordReset,
+    signOut, syncNow, deleteAccount,
   } = useSync();
 
   const UNIT_OPTIONS = useMemo(() => unitOptions(settings.measurementSystem, lang), [settings.measurementSystem, lang]);
@@ -49,6 +52,16 @@ export default function SettingsScreen() {
   const [syncCode, setSyncCode] = useState('');
   const [consent, setConsent] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [resetCode, setResetCode] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Tick down the resend cooldown (anti-spam on the confirmation code).
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   function handleClearProducts() {
     const message = t('settings.clear.confirm');
@@ -97,9 +110,32 @@ export default function SettingsScreen() {
   }
 
   async function handleResendOtp() {
+    if (resendCooldown > 0) return;
     setAuthLoading(true);
     await resendOtp();
     setAuthLoading(false);
+    setResendCooldown(30);
+  }
+
+  async function handleRequestReset() {
+    if (!syncEmail.trim()) {
+      const msg = t('account.resetHint');
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert(t('account.resetTitle'), msg);
+      return;
+    }
+    setAuthLoading(true);
+    await requestPasswordReset(syncEmail.trim());
+    setAuthLoading(false);
+  }
+
+  async function handleConfirmReset() {
+    if (!resetCode.trim() || !resetNewPassword) return;
+    setAuthLoading(true);
+    await confirmPasswordReset(resetCode.trim(), resetNewPassword);
+    setAuthLoading(false);
+    setResetCode('');
+    setResetNewPassword('');
   }
 
   function handleDeleteAccount() {
@@ -315,14 +351,58 @@ export default function SettingsScreen() {
             disabled={!syncCode.trim()}
           />
           <View style={styles.authButtons}>
-            <Button title={t('account.otpResend')} onPress={handleResendOtp} variant="secondary" disabled={authLoading} style={styles.authButton} />
+            <Button
+              title={resendCooldown > 0 ? t('account.resendIn', { s: resendCooldown }) : t('account.otpResend')}
+              onPress={handleResendOtp}
+              variant="secondary"
+              disabled={authLoading || resendCooldown > 0}
+              style={styles.authButton}
+            />
             <Button title={t('common.cancel')} onPress={cancelConfirmation} variant="secondary" disabled={authLoading} style={styles.authButton} />
           </View>
         </ThemedView>
       )}
 
+      {/* Password recovery — enter code + new password */}
+      {enabled && !user && awaitingPasswordReset && (
+        <ThemedView type="backgroundElement" style={styles.section}>
+          <ThemedText style={styles.subLabel}>{t('account.resetTitle')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+            {t('account.resetCodeHint', { email: pendingResetEmail ?? '' })}
+          </ThemedText>
+          {!!error && (
+            <ThemedText type="small" style={[styles.errorText, { color: '#D64545' }]}>{error}</ThemedText>
+          )}
+          <TextInput
+            style={[styles.authInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, letterSpacing: 4 }]}
+            placeholder={t('account.otpPlaceholder')}
+            placeholderTextColor={theme.textSecondary}
+            value={resetCode}
+            onChangeText={setResetCode}
+            keyboardType="number-pad"
+            editable={!authLoading}
+          />
+          <TextInput
+            style={[styles.authInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+            placeholder={t('account.newPassword')}
+            placeholderTextColor={theme.textSecondary}
+            value={resetNewPassword}
+            onChangeText={setResetNewPassword}
+            secureTextEntry
+            editable={!authLoading}
+          />
+          <Button
+            title={t('account.resetConfirm')}
+            onPress={handleConfirmReset}
+            loading={authLoading}
+            disabled={!resetCode.trim() || !resetNewPassword}
+          />
+          <Button title={t('common.cancel')} onPress={cancelPasswordReset} variant="secondary" disabled={authLoading} />
+        </ThemedView>
+      )}
+
       {/* Sign in / create account */}
-      {enabled && !user && !awaitingConfirmation && (
+      {enabled && !user && !awaitingConfirmation && !awaitingPasswordReset && (
         <ThemedView type="backgroundElement" style={styles.section}>
           <ThemedText style={styles.subLabel}>{t('settings.signin')}</ThemedText>
           {!!error && (
@@ -387,6 +467,12 @@ export default function SettingsScreen() {
               style={styles.authButton}
             />
           </View>
+
+          <TouchableOpacity onPress={handleRequestReset} disabled={authLoading} style={styles.forgotRow}>
+            <ThemedText type="small" style={[styles.forgotText, { color: theme.primary }]}>
+              {t('account.forgot')}
+            </ThemedText>
+          </TouchableOpacity>
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
             {t('account.privacyNote')}
@@ -495,6 +581,14 @@ const styles = StyleSheet.create({
   consentText: {
     flex: 1,
     lineHeight: 18,
+  },
+  forgotRow: {
+    alignSelf: 'center',
+    paddingVertical: Spacing.one,
+  },
+  forgotText: {
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   section: {
     borderRadius: Spacing.two,
