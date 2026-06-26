@@ -46,6 +46,27 @@ function stripTags(html: string): string {
     .trim();
 }
 
+function normUnit(unit: string): string {
+  const x = unit.toLowerCase();
+  return x === 'l' ? 'L' : x;
+}
+
+function extractPackSize(name: string): { size: number; unit: string } | null {
+  let best: { size: number; unit: string } | null = null;
+  const weightOrVolume = /(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = weightOrVolume.exec(name))) {
+    best = { size: parseFloat(match[1].replace(',', '.')), unit: normUnit(match[2]) };
+  }
+  if (best) return best;
+
+  const count = /(\d+)\s*un\b/i.exec(name);
+  if (count) return { size: parseInt(count[1], 10), unit: 'un' };
+
+  return null;
+}
+
 /**
  * Parse the SEFAZ NFC-e consultation HTML into receipt items (best-effort).
  * Targets the common structure: each product has a `txtTit` description span,
@@ -59,11 +80,17 @@ export function parseNfceHtml(html: string): ReceiptItem[] {
       const name = stripTags(chunk.split('</span>')[0] ?? '');
       if (!name || name.length < 2) continue;
 
-      const qtyM = chunk.match(/Qtde\.?\s*:?\s*(?:<\/strong>)?\s*([\d.,]+)/i);
-      const unitM = chunk.match(/\bUN\s*:?\s*(?:<\/strong>)?\s*([A-Za-zÀ-ú]{1,4})/i);
+      const plain = stripTags(chunk);
+      const qtyM = plain.match(/Qtde\.?\s*:?\s*([\d.,]+)/i);
+      const unitM = plain.match(/\bUN\s*:?\s*([A-Za-zÀ-ú]{1,8})/i);
 
-      const quantity = qtyM?.[1] ? parseFloat(qtyM[1].replace(/\./g, '').replace(',', '.')) || 1 : 1;
-      const unit = (unitM?.[1] ?? 'un').toLowerCase();
+      let quantity = qtyM?.[1] ? parseFloat(qtyM[1].replace(/\./g, '').replace(',', '.')) || 1 : 1;
+      let unit = normUnit(unitM?.[1] ?? 'un');
+      const pack = unit === 'un' ? extractPackSize(name) : null;
+      if (pack) {
+        quantity = Math.round(quantity * pack.size * 1000) / 1000;
+        unit = pack.unit;
+      }
 
       items.push({ name, quantity, unit, category: 'Outros' });
       if (items.length >= 60) break;
