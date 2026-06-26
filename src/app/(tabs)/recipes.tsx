@@ -57,6 +57,7 @@ export default function RecipesScreen() {
   const [search, setSearch] = useState('');
   const [cuisineFilter, setCuisineFilter] = useState<CuisineTag | null>(null);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [onlyExpiring, setOnlyExpiring] = useState(false);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -86,15 +87,16 @@ export default function RecipesScreen() {
     if (onlyFavorites) list = list.filter((r) => favorites.includes(r.id));
     if (cuisineFilter) list = filterByCuisine(list, [cuisineFilter]);
     if (search.trim()) list = list.filter((r) => recipeMatchesQuery(r, search));
-    const matches = list.map((r) => matchRecipe(r, available));
+    let matches = list.map((r) => matchRecipe(r, available));
+    if (onlyExpiring) matches = matches.filter((m) => m.hasAtRisk || m.hasExpiringSoon);
     return rankRecipeMatches(matches, settings.cuisines);
-  }, [communityRecipes, apiRecipes, settings, available, cuisineFilter, search, onlyFavorites, favorites]);
+  }, [communityRecipes, apiRecipes, settings, available, cuisineFilter, search, onlyFavorites, onlyExpiring, favorites]);
 
-  const browsing = !!search.trim() || !!cuisineFilter || onlyFavorites;
+  const browsing = !!search.trim() || !!cuisineFilter || onlyFavorites || onlyExpiring;
   const fullCount = useMemo(() => ranked.filter(canMakeNow).length, [ranked]);
 
   // Reset pagination whenever the result set changes
-  useEffect(() => { setPage(1); }, [search, cuisineFilter, onlyFavorites, settings, communityRecipes, apiRecipes]);
+  useEffect(() => { setPage(1); }, [search, cuisineFilter, onlyFavorites, onlyExpiring, settings, communityRecipes, apiRecipes]);
 
   const visible = useMemo(() => ranked.slice(0, page * PAGE_SIZE), [ranked, page]);
 
@@ -131,6 +133,17 @@ export default function RecipesScreen() {
                 <View style={[styles.onlineBadge, { backgroundColor: theme.primary + '20' }]}>
                   <Ionicons name="cloud-outline" size={11} color={theme.primary} />
                   <ThemedText style={[styles.onlineText, { color: theme.primary }]}>online</ThemedText>
+                </View>
+              )}
+              {(hasAtRisk || hasExpiringSoon) && (
+                <View
+                  style={[
+                    styles.expiringBadge,
+                    { backgroundColor: hasAtRisk ? StatusColors.at_risk : StatusColors.expiring_soon },
+                  ]}
+                >
+                  <Ionicons name={hasAtRisk ? 'warning' : 'time'} size={11} color="#fff" />
+                  <ThemedText style={styles.expiringText}>{t('recipes.expiringTag')}</ThemedText>
                 </View>
               )}
               {full ? (
@@ -187,7 +200,8 @@ export default function RecipesScreen() {
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
         <Chip label={t('recipes.favorites')} icon={onlyFavorites ? 'heart' : 'heart-outline'} active={onlyFavorites} activeColor="#E5484D" onPress={() => setOnlyFavorites((v) => !v)} theme={theme} />
-        <Chip label={t('recipes.all')} active={!cuisineFilter && !onlyFavorites} onPress={() => { setCuisineFilter(null); setOnlyFavorites(false); }} theme={theme} />
+        <Chip label={t('recipes.all')} active={!cuisineFilter && !onlyFavorites && !onlyExpiring} onPress={() => { setCuisineFilter(null); setOnlyFavorites(false); setOnlyExpiring(false); }} theme={theme} />
+        <Chip label={t('recipes.expiringTag')} icon="time" active={onlyExpiring} activeColor={StatusColors.expiring_soon} onPress={() => setOnlyExpiring((v) => !v)} theme={theme} />
         {CUISINE_FILTERS.map(([value, label]) => (
           <Chip key={value} label={label} active={cuisineFilter === value} onPress={() => setCuisineFilter(cuisineFilter === value ? null : value)} theme={theme} />
         ))}
@@ -242,9 +256,9 @@ export default function RecipesScreen() {
         ListEmptyComponent={
           browsing ? (
             <EmptyState
-              icon={onlyFavorites ? 'heart-outline' : 'search-outline'}
-              message={onlyFavorites ? t('recipes.empty.favTitle') : t('recipes.empty.searchTitle')}
-              subMessage={onlyFavorites ? t('recipes.empty.favSub') : t('recipes.empty.searchSub')}
+              icon={onlyExpiring ? 'time-outline' : onlyFavorites ? 'heart-outline' : 'search-outline'}
+              message={onlyExpiring ? t('recipes.empty.expiringTitle') : onlyFavorites ? t('recipes.empty.favTitle') : t('recipes.empty.searchTitle')}
+              subMessage={onlyExpiring ? t('recipes.empty.expiringSub') : onlyFavorites ? t('recipes.empty.favSub') : t('recipes.empty.searchSub')}
             />
           ) : hasHardFilters ? (
             <EmptyState
@@ -311,11 +325,13 @@ const styles = StyleSheet.create({
   card: { borderRadius: Spacing.two, overflow: 'hidden' },
   cardImage: { width: '100%', height: 130 },
   cardBody: { padding: Spacing.three, gap: Spacing.two },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.two },
   title: { fontWeight: '600', fontSize: 16, flex: 1 },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: Spacing.one, maxWidth: '62%' },
   onlineBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: Spacing.one + 2, paddingVertical: Spacing.half, borderRadius: Spacing.two },
   onlineText: { fontSize: 11, fontWeight: '600' },
+  expiringBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: Spacing.one + 2, paddingVertical: Spacing.half, borderRadius: Spacing.two },
+  expiringText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   matchBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: Spacing.two, paddingVertical: Spacing.half, borderRadius: Spacing.two },
   matchText: { fontSize: 13, fontWeight: '700' },
   urgentHint: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, paddingHorizontal: Spacing.two, paddingVertical: Spacing.one, borderRadius: Spacing.one },
