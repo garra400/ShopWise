@@ -65,7 +65,7 @@ const UNIT_BY_CATEGORY: Record<IngredientCategory, string> = {
 
 const UNIT_BY_ID: Record<string, string> = {
   // Líquidos (L)
-  leite: 'L', 'leite-coco': 'L', 'leite-vegetal': 'L', suco: 'L', agua: 'L', refrigerante: 'L', cafe: 'L', cha: 'L',
+  leite: 'L', 'leite-coco': 'L', 'leite-vegetal': 'L', suco: 'L', agua: 'L', refrigerante: 'L',
   // Líquidos (ml)
   azeite: 'ml', oleo: 'ml', 'oleo-coco': 'ml', vinagre: 'ml',
   // Peso (kg)
@@ -77,6 +77,7 @@ const UNIT_BY_ID: Record<string, string> = {
   queijo: 'g', manteiga: 'g', margarina: 'g', requeijao: 'g', 'cream-cheese': 'g',
   gergelim: 'g', chia: 'g', amendoim: 'g', castanha: 'g', nozes: 'g', passas: 'g',
   tahine: 'g', 'pasta-amendoim': 'g', linguica: 'g', presunto: 'g', bacon: 'g',
+  cafe: 'g', cha: 'g', sal: 'g', macarrao: 'g',
 };
 
 /** Suggested default unit for a canonical ingredient (falls back to category / 'un'). */

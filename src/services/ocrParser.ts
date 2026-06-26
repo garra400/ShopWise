@@ -64,21 +64,40 @@ function guessCategory(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Unit detection
+// Pack size & quantity
 // ---------------------------------------------------------------------------
 
-const UNIT_MAP: Array<{ pattern: RegExp; unit: string }> = [
-  { pattern: /\bkg\b/i, unit: 'kg' },
-  { pattern: /\b(\d+)?\s*g\b/i, unit: 'g' },
-  { pattern: /\b(\d+)?\s*ml\b/i, unit: 'ml' },
-  { pattern: /\b(\d+)?\s*l\b/i, unit: 'L' },
-];
+function normUnit(u: string): string {
+  const x = u.toLowerCase();
+  return x === 'l' ? 'L' : x; // kg, g, ml stay; l → L
+}
 
-function detectUnit(token: string): string | null {
-  for (const { pattern, unit } of UNIT_MAP) {
-    if (pattern.test(token)) return unit;
-  }
+/**
+ * Package size declared in the product NAME, e.g. "ARROZ 5KG" → 5 kg,
+ * "OLEO 900ML" → 900 ml, "OVOS 12UN" → 12 un. This is the real measure the
+ * shopper bought (a 5kg bag), so we use it instead of guessing a unit.
+ * Returns the LAST size found (sizes sit at the end of the name).
+ */
+function extractPackSize(name: string): { size: number; unit: string } | null {
+  let best: { size: number; unit: string } | null = null;
+  const wv = /(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = wv.exec(name))) best = { size: parseFloat(m[1].replace(',', '.')), unit: normUnit(m[2]) };
+  if (best) return best;
+  // count pack like "12UN" (a dozen) — only if no weight/volume size
+  const un = /(\d+)\s*un\b/i.exec(name);
+  if (un) return { size: parseInt(un[1], 10), unit: 'un' };
   return null;
+}
+
+/** From a "qty × unit-price = total" line, read the count and any decimal weight. */
+function parseQtyLine(line: string): { count: number; weight: { v: number; u: string } | null } {
+  let count = 1;
+  const cm = /(\d+)\s*un\b/i.exec(line) || /^\s*(\d+)\s*[xX]/.exec(line);
+  if (cm) { const n = parseInt(cm[1], 10); if (n > 0 && n < 100) count = n; }
+  const dec = /(\d+[.,]\d+)\s*(kg|g|ml|l)\b/i.exec(line);
+  const weight = dec ? { v: parseFloat(dec[1].replace(',', '.')), u: normUnit(dec[2]) } : null;
+  return { count, weight };
 }
 
 // ---------------------------------------------------------------------------
@@ -114,31 +133,6 @@ function toTitleCase(s: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Quantity extraction
-// ---------------------------------------------------------------------------
-
-function extractQuantity(line: string): { quantity: number; unit: string } {
-  // 1) Weighed items: a DECIMAL weight/volume is the real purchased quantity
-  //    (e.g. "1,230 KG", "0,5 L"). Package sizes like "5KG"/"500G" are integers
-  //    glued to the product name and must NOT be read as the quantity.
-  const dec = line.match(/(\d+[,.]\d+)\s*(kg|g|ml|l)\b/i);
-  if (dec) {
-    const qty = parseFloat(dec[1].replace(',', '.'));
-    const u = dec[2].toLowerCase();
-    if (qty > 0) return { quantity: qty, unit: u === 'l' ? 'L' : u };
-  }
-  // 2) Explicit count: "3 UN" / "2 x ..." — a SPACE is required so pack-size
-  //    tokens like "12UN" or "5KG" don't get mistaken for the count.
-  const count = line.match(/(\d+)\s+un\b/i) || line.match(/(\d+)\s*[xX]\s/);
-  if (count?.[1]) {
-    const qty = parseInt(count[1], 10);
-    if (qty > 0 && qty < 100) return { quantity: qty, unit: 'un' };
-  }
-  // 3) Default: one unit (the review screen lets the user adjust).
-  return { quantity: 1, unit: 'un' };
-}
-
-// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -164,28 +158,33 @@ export function parseReceiptText(text: string): ReceiptItem[] {
       const cleaned = cleanName(line);
       if (cleaned.length < 3) continue;
 
-      let { quantity, unit } = extractQuantity(line);
+      // The package size in the name ("ARROZ 5KG", "OLEO 900ML", "OVOS 12UN").
+      const pack = extractPackSize(line);
 
-      // If the product name line carried no explicit qty, the qty/price is often
-      // on the NEXT line — pull it from there and consume that line.
+      // The qty/price line is usually right BELOW the product name.
       const next = lines[idx + 1];
-      if (quantity === 1 && unit === 'un' && next && isQtyLine(next)) {
-        const nq = extractQuantity(next);
-        quantity = nq.quantity;
-        unit = nq.unit;
-        idx++;
-      }
+      const qline = next && isQtyLine(next) ? lines[++idx] : (isQtyLine(line) ? line : null);
+      const { count, weight } = qline ? parseQtyLine(qline) : { count: 1, weight: null };
 
-      // Refine the unit from a standalone unit token in the name line ("... KG").
-      for (const token of line.split(/\s+/)) {
-        const detected = detectUnit(token);
-        if (detected) { if (unit === 'un') unit = detected; break; }
+      let quantity: number;
+      let unit: string;
+      if (pack) {
+        // bought `count` packages of `size` → total measure (e.g. 6× 1L = 6 L)
+        quantity = Math.round(pack.size * count * 1000) / 1000;
+        unit = pack.unit;
+      } else if (weight) {
+        // weighed item: the decimal weight on the qty line is the amount
+        quantity = weight.v;
+        unit = weight.u;
+      } else {
+        quantity = count;
+        unit = 'un';
       }
 
       const name = toTitleCase(cleaned);
       results.push({ name, quantity, unit, category: guessCategory(name) });
 
-      if (results.length >= 20) break;
+      if (results.length >= 30) break;
     }
 
     return results;

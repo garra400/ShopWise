@@ -11,7 +11,8 @@ import { useSettings } from '@/context/SettingsContext';
 import { useT } from '@/i18n';
 import { matchRecipe, getAvailableProducts, ingredientMatchesProduct } from '@/utils/recipes';
 import { ingredientDisplayName } from '@/utils/ingredients';
-import { formatQuantity, convertQuantity } from '@/utils/units';
+import { formatQuantity } from '@/utils/units';
+import { convertMeasure } from '@/utils/measure';
 import { dietTagLabel, allergenLabel, cuisineLabel } from '@/utils/diet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -49,10 +50,14 @@ export default function RecipeDetailScreen() {
   const available = getAvailableProducts(products);
   const match = matchRecipe(recipe, available);
 
-  // Map each recipe INGREDIENT to one pantry product and deduct its amount —
-  // ingredient-centric so two products matching the same ingredient aren't
-  // double-deducted. Subtract when units reconcile; else (or if it runs out)
-  // mark the product fully consumed.
+  // Pantry products that match this recipe (for showing the button at all).
+  const usableProducts = available.filter((p) =>
+    recipe.ingredients.some((ing) => ingredientMatchesProduct(ing, p)),
+  );
+
+  // Map each recipe INGREDIENT to one pantry product and deduct its amount via
+  // the measurement table (xíc./col./dente/un → the product's unit). If we
+  // can't compute a real amount, LEAVE the item untouched — never nuke it.
   const recipeDeductions: { id: string; consume: boolean; quantity?: number }[] = [];
   const deductedProducts: typeof available = [];
   const takenIds = new Set<string>();
@@ -60,20 +65,26 @@ export default function RecipeDetailScreen() {
     const p = available.find((pr) => !takenIds.has(pr.id) && ingredientMatchesProduct(ing, pr));
     if (!p) continue;
     takenIds.add(p.id);
-    deductedProducts.push(p);
-    let entry: { id: string; consume: boolean; quantity?: number } = { id: p.id, consume: true };
-    if (p.quantity != null && ing.quantity != null) {
-      const used = convertQuantity(ing.quantity, ing.unit, p.unit);
-      if (used != null) {
-        const remaining = Math.round((p.quantity - used) * 100) / 100;
-        if (remaining > 0.001) entry = { id: p.id, consume: false, quantity: remaining };
-      }
+    const canonical = p.canonicalId ?? ing.canonicalId;
+
+    if (p.quantity == null) {
+      // No tracked amount → we know it was used, so mark it consumed.
+      deductedProducts.push(p);
+      recipeDeductions.push({ id: p.id, consume: true });
+      continue;
     }
-    recipeDeductions.push(entry);
+    if (ing.quantity == null) continue; // recipe didn't say how much → leave as is
+
+    const used = convertMeasure(ing.quantity, ing.unit, p.unit, canonical);
+    if (used == null) continue; // units don't reconcile → leave as is (don't nuke)
+
+    const remaining = Math.round((p.quantity - used) * 100) / 100;
+    deductedProducts.push(p);
+    recipeDeductions.push(remaining > 0.01 ? { id: p.id, consume: false, quantity: remaining } : { id: p.id, consume: true });
   }
 
   function handleMadeIt() {
-    if (deductedProducts.length === 0) {
+    if (usableProducts.length === 0) {
       if (Platform.OS === 'web') window.alert(t('recipe.markDone.none'));
       else Alert.alert(t('recipe.markDone'), t('recipe.markDone.none'));
       return;
@@ -228,7 +239,7 @@ export default function RecipeDetailScreen() {
       </ThemedView>
 
       {/* Mark as cooked → use up matching pantry items */}
-      {deductedProducts.length > 0 && (
+      {usableProducts.length > 0 && (
         <Button
           title={`✓ ${t('recipe.markDone')}`}
           onPress={handleMadeIt}

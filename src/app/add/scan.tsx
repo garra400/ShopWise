@@ -51,7 +51,9 @@ function buildItem(name: string, quantity: number, unit: string, fallbackCategor
     name: ing ? ing.name : name,
     canonicalId: cid,
     quantity,
-    unit: cid ? suggestedUnit(cid) : unit,
+    // Keep the unit the receipt gave (5kg, 900ml, 500g...); only fall back to the
+    // catalog's natural unit when the receipt was non-specific ('un').
+    unit: unit && unit !== 'un' ? unit : cid ? suggestedUnit(cid) : unit,
     category: ing?.category ?? fallbackCategory ?? 'Outros',
     expiryDate: expiryFromDays(suggestedShelfLifeDays(cid)),
   };
