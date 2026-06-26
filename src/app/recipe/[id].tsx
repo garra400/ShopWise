@@ -62,7 +62,10 @@ export default function RecipeDetailScreen() {
   const deductedProducts: typeof available = [];
   const takenIds = new Set<string>();
   for (const ing of recipe.ingredients) {
-    const p = available.find((pr) => !takenIds.has(pr.id) && ingredientMatchesProduct(ing, pr));
+    // Use the batch that expires SOONEST first (FIFO — fights waste).
+    const p = available
+      .filter((pr) => !takenIds.has(pr.id) && ingredientMatchesProduct(ing, pr))
+      .sort((a, b) => a.expiryDate.localeCompare(b.expiryDate))[0];
     if (!p) continue;
     takenIds.add(p.id);
     const canonical = p.canonicalId ?? ing.canonicalId;
