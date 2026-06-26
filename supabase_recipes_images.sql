@@ -1,5 +1,5 @@
 -- ShopWise — imagens curadas (v2, com filtro de relevância). Rode no SQL Editor.
-update public.recipes set image='https://images.pexels.com/photos/12916873/pexels-photo-12916873.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-1';
+update public.recipes set image='https://images.pexels.com/photos/31233887/pexels-photo-31233887.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-1';
 update public.recipes set image='https://images.pexels.com/photos/14537677/pexels-photo-14537677.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-2';
 update public.recipes set image='https://images.pexels.com/photos/19781592/pexels-photo-19781592.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-3';
 update public.recipes set image='https://images.pexels.com/photos/33323282/pexels-photo-33323282.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-4';
@@ -16,13 +16,13 @@ update public.recipes set image='https://images.pexels.com/photos/28992209/pexel
 update public.recipes set image='https://images.pexels.com/photos/5393660/pexels-photo-5393660.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-15';
 update public.recipes set image='https://images.pexels.com/photos/32978296/pexels-photo-32978296.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-16';
 update public.recipes set image='https://images.pexels.com/photos/9080141/pexels-photo-9080141.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-17';
-update public.recipes set image='https://images.pexels.com/photos/3026803/pexels-photo-3026803.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-18';
-update public.recipes set image='https://images.pexels.com/photos/30427454/pexels-photo-30427454.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-19';
-update public.recipes set image='https://images.pexels.com/photos/33088383/pexels-photo-33088383.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-20';
+update public.recipes set image='https://images.pexels.com/photos/5594508/pexels-photo-5594508.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-18';
+update public.recipes set image='https://images.pexels.com/photos/34470652/pexels-photo-34470652.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-19';
+update public.recipes set image='https://images.pexels.com/photos/37825034/pexels-photo-37825034.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-20';
 update public.recipes set image='https://images.pexels.com/photos/14090813/pexels-photo-14090813.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-21';
 update public.recipes set image='https://images.pexels.com/photos/6734444/pexels-photo-6734444.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-22';
 update public.recipes set image='https://images.pexels.com/photos/11783272/pexels-photo-11783272.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-23';
-update public.recipes set image='https://images.pexels.com/photos/15789565/pexels-photo-15789565.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-24';
+update public.recipes set image='https://images.pexels.com/photos/28978147/pexels-photo-28978147.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-24';
 update public.recipes set image='https://images.pexels.com/photos/3851061/pexels-photo-3851061.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-25';
 update public.recipes set image='https://images.pexels.com/photos/13823542/pexels-photo-13823542.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-26';
 update public.recipes set image='https://images.pexels.com/photos/14935004/pexels-photo-14935004.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-27';
@@ -70,7 +70,7 @@ update public.recipes set image='https://images.pexels.com/photos/8081574/pexels
 update public.recipes set image='https://images.pexels.com/photos/7937002/pexels-photo-7937002.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-69';
 update public.recipes set image='https://images.pexels.com/photos/9226325/pexels-photo-9226325.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-70';
 -- Lote novo (curado) — comm-71..95 + ajustes
-update public.recipes set image='https://images.pexels.com/photos/6163259/pexels-photo-6163259.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-71';
+update public.recipes set image=null, updated_at=now() where id='comm-71';
 update public.recipes set image=null, updated_at=now() where id='comm-72';
 update public.recipes set image=null, updated_at=now() where id='comm-73';
 update public.recipes set image='https://images.pexels.com/photos/36673636/pexels-photo-36673636.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200', updated_at=now() where id='comm-74';
