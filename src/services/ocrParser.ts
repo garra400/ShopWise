@@ -10,7 +10,7 @@ const NOISE_KEYWORDS = [
   'VALOR', 'DINHEIRO', 'CARTAO', 'CREDITO', 'DEBITO', 'PIX', 'ICMS', 'PIS',
   'COFINS', 'TRIBUTOS?', 'IMPOSTO', 'R\\$', '%',
   // store / header / footer noise
-  'LTDA', 'EPP', '\\bME\\b', '\\bIE\\b', 'INSCRICAO', 'ENDERECO', 'AVENIDA', '\\bAV\\b',
+  'LTDA', 'EPP', '\\bME\\b', '\\bIE\\b', '\\bS\\.?A\\.?\\b', 'INSCRICAO', 'ENDERECO', 'AVENIDA', '\\bAV\\b',
   '\\bRUA\\b', '\\bTEL\\b', 'FONE', 'EMISSAO', 'PROTOCOLO', 'CHAVE', 'ACESSO',
   'CONSUMIDOR', 'NFC-?E', 'NF-?E', '\\bSAT\\b', 'SERIE', 'CAIXA', 'OPERADOR',
   'OBRIGAD', 'VOLTE SEMPRE', 'DESCONTO', 'ACRESCIMO', 'PAGAMENTO', 'PAGO',
