@@ -45,3 +45,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Tesseract language data baixado pelos scripts de teste
+*.traineddata
