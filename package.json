@@ -50,7 +50,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "validate": "npx tsx scripts/validate-pipeline.ts",
-    "test:ocr": "npx tsx scripts/test-ocr.ts"
+    "test:ocr": "npx tsx scripts/test-ocr.ts",
+    "sim": "npx tsx scripts/simulate-app.ts"
   },
   "private": true
 }

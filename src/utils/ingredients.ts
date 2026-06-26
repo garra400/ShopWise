@@ -32,7 +32,7 @@ const SHELF_LIFE_BY_ID: Record<string, number> = {
   leite: 10, iogurte: 25, queijo: 25, requeijao: 18, 'cream-cheese': 25, ovo: 30,
   manteiga: 60, margarina: 60, 'creme-leite': 180, 'leite-condensado': 365, 'leite-po': 365,
   // Carnes / peixes (geladeira; congelado dura muito mais, mas assumimos fresco)
-  peixe: 3, camarao: 3, frango: 4, 'carne-bovina': 5, 'carne-suina': 5,
+  peixe: 4, camarao: 4, frango: 4, 'carne-bovina': 5, 'carne-suina': 5,
   presunto: 8, linguica: 8, salsicha: 15, bacon: 20, atum: 365, sardinha: 365,
   // Padaria
   pao: 6, bolo: 5, torrada: 120, biscoito: 120, tortilla: 30,

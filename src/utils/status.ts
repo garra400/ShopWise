@@ -13,14 +13,16 @@ function parseIso(iso: string): Date {
  * (grocery, drinks) get a wider window. Assumes proper storage.
  */
 type StatusWindow = { atRisk: number; expiring: number };
+// Windows are small (warn only in the LAST few days) and always smaller than the
+// item's default shelf life, so a freshly-bought item starts as "Bom".
 const STATUS_WINDOWS: Record<string, StatusWindow> = {
-  Carnes: { atRisk: 2, expiring: 5 },
-  Hortifruti: { atRisk: 2, expiring: 6 },
-  Padaria: { atRisk: 2, expiring: 5 },
-  Laticínios: { atRisk: 3, expiring: 10 },
-  Mercearia: { atRisk: 7, expiring: 30 },
-  Bebidas: { atRisk: 7, expiring: 30 },
-  Outros: { atRisk: 3, expiring: 14 },
+  Carnes: { atRisk: 2, expiring: 3 },
+  Hortifruti: { atRisk: 1, expiring: 3 },
+  Padaria: { atRisk: 1, expiring: 2 },
+  Laticínios: { atRisk: 2, expiring: 4 },
+  Bebidas: { atRisk: 2, expiring: 4 },
+  Mercearia: { atRisk: 5, expiring: 15 },
+  Outros: { atRisk: 2, expiring: 5 },
 };
 
 export function getStatus(product: Product): ProductStatus {
