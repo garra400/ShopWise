@@ -16,6 +16,7 @@ import {
 } from '@/services/storage';
 import { SEED_PRODUCTS } from '@/data/seed';
 import { resolveCanonicalId } from '@/utils/ingredients';
+import { getSupabase } from '@/services/supabase';
 
 interface ProductsContextValue {
   products: Product[];
@@ -172,6 +173,13 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const removeProduct = useCallback(
     async (id: string) => {
       await persist(products.filter((p) => p.id !== id));
+      // Also delete from the cloud so it doesn't reappear on the next sync pull.
+      // RLS scopes this to the signed-in user; a no-op when not logged in / no keys.
+      try {
+        await getSupabase()?.from('products').delete().eq('id', id);
+      } catch {
+        // offline / not signed in — local removal still applied
+      }
     },
     [products, persist]
   );

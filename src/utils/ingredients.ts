@@ -7,31 +7,35 @@ import { INGREDIENTS, INGREDIENTS_BY_ID } from '@/data/ingredients';
 
 /** Fallback by category when a specific ingredient has no override. */
 const SHELF_LIFE_BY_CATEGORY: Record<IngredientCategory, number> = {
-  Laticínios: 12,
-  Hortifruti: 7,
-  Carnes: 4,
-  Padaria: 5,
+  Laticínios: 14,
+  Hortifruti: 8,
+  Carnes: 5,
+  Padaria: 6,
   Bebidas: 120,
   Mercearia: 365,
   Outros: 30,
 };
 
-/** Per-ingredient overrides (more accurate than the category default). */
+/**
+ * Per-ingredient overrides (more accurate than the category default).
+ * Values assume PROPER storage (refrigerated/freezer/pantry as appropriate),
+ * so a freshly-bought item isn't flagged as urgent right away.
+ */
 const SHELF_LIFE_BY_ID: Record<string, number> = {
   // Hortifruti
-  morango: 3, abacate: 4, mamao: 4, banana: 5, alface: 5, rucula: 4, espinafre: 4,
-  couve: 5, brocolis: 5, 'couve-flor': 5, cogumelo: 5, manga: 6, abacaxi: 6, melancia: 6,
-  tomate: 7, pepino: 7, uva: 7, mandioca: 8, vagem: 6, pimentao: 10, abobrinha: 10, berinjela: 10,
-  maca: 20, laranja: 15, limao: 20, inhame: 20, cenoura: 21, beterraba: 21, gengibre: 21,
-  batata: 30, 'batata-doce': 30, abobora: 30, cebola: 30, repolho: 14, alho: 60,
+  morango: 4, abacate: 5, mamao: 5, banana: 6, alface: 6, rucula: 5, espinafre: 5,
+  couve: 6, brocolis: 6, 'couve-flor': 6, cogumelo: 6, manga: 7, abacaxi: 7, melancia: 7,
+  tomate: 8, pepino: 8, uva: 8, mandioca: 8, vagem: 7, pimentao: 12, abobrinha: 12, berinjela: 12,
+  maca: 25, laranja: 18, limao: 25, inhame: 25, cenoura: 25, beterraba: 25, gengibre: 30,
+  batata: 35, 'batata-doce': 35, abobora: 40, cebola: 35, repolho: 18, alho: 90,
   // Laticínios / ovos
-  leite: 7, iogurte: 20, queijo: 20, requeijao: 15, 'cream-cheese': 20, ovo: 21,
+  leite: 10, iogurte: 25, queijo: 25, requeijao: 18, 'cream-cheese': 25, ovo: 30,
   manteiga: 60, margarina: 60, 'creme-leite': 180, 'leite-condensado': 365, 'leite-po': 365,
-  // Carnes / peixes
-  peixe: 2, camarao: 2, frango: 3, 'carne-bovina': 4, 'carne-suina': 4,
-  presunto: 7, linguica: 7, salsicha: 14, bacon: 14, atum: 365, sardinha: 365,
+  // Carnes / peixes (geladeira; congelado dura muito mais, mas assumimos fresco)
+  peixe: 3, camarao: 3, frango: 4, 'carne-bovina': 5, 'carne-suina': 5,
+  presunto: 8, linguica: 8, salsicha: 15, bacon: 20, atum: 365, sardinha: 365,
   // Padaria
-  pao: 5, bolo: 4, torrada: 120, biscoito: 120, tortilla: 30,
+  pao: 6, bolo: 5, torrada: 120, biscoito: 120, tortilla: 30,
   // Bebidas
   suco: 5, 'leite-vegetal': 30, refrigerante: 180, agua: 365, cafe: 365, cha: 365,
   // Mercearia perecível-ish

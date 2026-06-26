@@ -7,14 +7,31 @@ function parseIso(iso: string): Date {
   return parse(iso, 'yyyy-MM-dd', new Date());
 }
 
+/**
+ * Alert windows (days remaining) BY food type. Highly perishable items
+ * (meat, produce, bakery) only warn when very close; shelf-stable ones
+ * (grocery, drinks) get a wider window. Assumes proper storage.
+ */
+type StatusWindow = { atRisk: number; expiring: number };
+const STATUS_WINDOWS: Record<string, StatusWindow> = {
+  Carnes: { atRisk: 2, expiring: 5 },
+  Hortifruti: { atRisk: 2, expiring: 6 },
+  Padaria: { atRisk: 2, expiring: 5 },
+  Laticínios: { atRisk: 3, expiring: 10 },
+  Mercearia: { atRisk: 7, expiring: 30 },
+  Bebidas: { atRisk: 7, expiring: 30 },
+  Outros: { atRisk: 3, expiring: 14 },
+};
+
 export function getStatus(product: Product): ProductStatus {
   const expiry = parseIso(product.expiryDate);
   const today = new Date();
   const days = differenceInCalendarDays(expiry, today);
 
   if (days < 0) return 'expired';
-  if (days <= 6) return 'at_risk';
-  if (days <= 30) return 'expiring_soon';
+  const w = STATUS_WINDOWS[product.category] ?? STATUS_WINDOWS.Outros;
+  if (days <= w.atRisk) return 'at_risk';
+  if (days <= w.expiring) return 'expiring_soon';
   return 'good';
 }
 

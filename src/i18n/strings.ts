@@ -100,7 +100,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
 
     // Expiring
     'expiring.empty': 'Nenhum produto para vencer',
-    'expiring.empty.sub': 'Produtos que vencem em 7–30 dias aparecerão aqui',
+    'expiring.empty.sub': 'Produtos vencendo nos próximos dias aparecerão aqui',
 
     // Recipes (chrome)
     'recipes.search': 'Buscar receita ou ingrediente...',
@@ -362,7 +362,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
 
     // Expiring
     'expiring.empty': 'No products expiring',
-    'expiring.empty.sub': 'Products expiring in 7–30 days will show up here',
+    'expiring.empty.sub': 'Products expiring in the next few days will show up here',
 
     // Recipes (chrome)
     'recipes.search': 'Search recipe or ingredient...',

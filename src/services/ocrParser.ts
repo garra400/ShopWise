@@ -21,6 +21,16 @@ const NOISE_REGEX = new RegExp(NOISE_KEYWORDS.join('|'), 'i');
 /** ISO-ish date like 01/01/2024, time like 12:30, or mostly digits */
 const DATE_TIME_REGEX = /\b\d{2}[\/\-]\d{2}[\/\-]\d{2,4}\b|\b\d{1,2}:\d{2}\b/;
 
+/**
+ * A "quantity line" — the qty × unit-price = total line that, on many receipts,
+ * sits on the line BELOW the product name (e.g. "1,230 KG x 14,90   17,25").
+ * Starts with a number, optional unit, an x, and a price.
+ */
+const QTY_LINE_REGEX = /^\s*\d+[,.]?\d*\s*(kg|g|ml|l|un)?\s*[xX]\s*\d+[,.]\d{2}/i;
+function isQtyLine(line: string): boolean {
+  return QTY_LINE_REGEX.test(line);
+}
+
 function isNoiseLine(line: string): boolean {
   // Has fewer than 3 letters → noise
   const letterCount = (line.match(/[a-zA-ZÀ-úÃã]/g) ?? []).length;
@@ -108,21 +118,23 @@ function toTitleCase(s: string): string {
 // ---------------------------------------------------------------------------
 
 function extractQuantity(line: string): { quantity: number; unit: string } {
-  // Pattern: "2 kg", "500g", "1,5 L", "3 un", "2x"
-  const patterns: Array<{ re: RegExp; unit: string }> = [
-    { re: /(\d+(?:[,\.]\d+)?)\s*kg/i, unit: 'kg' },
-    { re: /(\d+(?:[,\.]\d+)?)\s*g\b/i, unit: 'g' },
-    { re: /(\d+(?:[,\.]\d+)?)\s*ml/i, unit: 'ml' },
-    { re: /(\d+(?:[,\.]\d+)?)\s*l\b/i, unit: 'L' },
-    { re: /(\d+)\s*[xX]\s/, unit: 'un' },
-  ];
-  for (const { re, unit } of patterns) {
-    const m = line.match(re);
-    if (m?.[1]) {
-      const qty = parseFloat(m[1].replace(',', '.'));
-      if (!isNaN(qty) && qty > 0) return { quantity: qty, unit };
-    }
+  // 1) Weighed items: a DECIMAL weight/volume is the real purchased quantity
+  //    (e.g. "1,230 KG", "0,5 L"). Package sizes like "5KG"/"500G" are integers
+  //    glued to the product name and must NOT be read as the quantity.
+  const dec = line.match(/(\d+[,.]\d+)\s*(kg|g|ml|l)\b/i);
+  if (dec) {
+    const qty = parseFloat(dec[1].replace(',', '.'));
+    const u = dec[2].toLowerCase();
+    if (qty > 0) return { quantity: qty, unit: u === 'l' ? 'L' : u };
   }
+  // 2) Explicit count: "3 UN" / "2 x ..." — a SPACE is required so pack-size
+  //    tokens like "12UN" or "5KG" don't get mistaken for the count.
+  const count = line.match(/(\d+)\s+un\b/i) || line.match(/(\d+)\s*[xX]\s/);
+  if (count?.[1]) {
+    const qty = parseInt(count[1], 10);
+    if (qty > 0 && qty < 100) return { quantity: qty, unit: 'un' };
+  }
+  // 3) Default: one unit (the review screen lets the user adjust).
   return { quantity: 1, unit: 'un' };
 }
 
@@ -143,26 +155,35 @@ export function parseReceiptText(text: string): ReceiptItem[] {
 
     const results: ReceiptItem[] = [];
 
-    for (const line of lines) {
+    for (let idx = 0; idx < lines.length; idx++) {
+      const line = lines[idx];
       if (isNoiseLine(line)) continue;
-
-      const { quantity, unit } = extractQuantity(line);
-
-      // Detect if a unit token appears in the line to refine unit choice
-      let finalUnit = unit;
-      const unitTokens = line.split(/\s+/);
-      for (const token of unitTokens) {
-        const detected = detectUnit(token);
-        if (detected) { finalUnit = detected; break; }
-      }
+      // A bare quantity line with no preceding product name → skip (noise).
+      if (isQtyLine(line)) continue;
 
       const cleaned = cleanName(line);
       if (cleaned.length < 3) continue;
 
-      const name = toTitleCase(cleaned);
-      const category = guessCategory(name);
+      let { quantity, unit } = extractQuantity(line);
 
-      results.push({ name, quantity, unit: finalUnit, category });
+      // If the product name line carried no explicit qty, the qty/price is often
+      // on the NEXT line — pull it from there and consume that line.
+      const next = lines[idx + 1];
+      if (quantity === 1 && unit === 'un' && next && isQtyLine(next)) {
+        const nq = extractQuantity(next);
+        quantity = nq.quantity;
+        unit = nq.unit;
+        idx++;
+      }
+
+      // Refine the unit from a standalone unit token in the name line ("... KG").
+      for (const token of line.split(/\s+/)) {
+        const detected = detectUnit(token);
+        if (detected) { if (unit === 'un') unit = detected; break; }
+      }
+
+      const name = toTitleCase(cleaned);
+      results.push({ name, quantity, unit, category: guessCategory(name) });
 
       if (results.length >= 20) break;
     }

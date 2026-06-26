@@ -18,12 +18,15 @@ import { takePendingScan } from '@/services/scanHandoff';
 import { useProducts } from '@/context/ProductsContext';
 import { DateInput } from '@/components/DateInput';
 import { IngredientPicker } from '@/components/IngredientPicker';
+import { Select } from '@/components/Select';
 import { Button } from '@/components/Button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { resolveCanonicalId, getIngredient, suggestedShelfLifeDays, suggestedUnit } from '@/utils/ingredients';
+import { unitOptions } from '@/utils/units';
+import { useSettings } from '@/context/SettingsContext';
 import { IngredientCategory } from '@/types';
 import { useT } from '@/i18n';
 
@@ -44,7 +47,8 @@ function buildItem(name: string, quantity: number, unit: string, fallbackCategor
   const cid = canonicalId ?? resolveCanonicalId(name);
   const ing = getIngredient(cid);
   return {
-    name,
+    // Recognized items use the clean catalog name (drops leftover receipt noise).
+    name: ing ? ing.name : name,
     canonicalId: cid,
     quantity,
     unit: cid ? suggestedUnit(cid) : unit,
@@ -74,6 +78,9 @@ function splitItems(receiptItems: ReceiptItem[]): { recognized: EditableItem[]; 
 export default function ScanScreen() {
   const theme = useTheme();
   const { addProducts } = useProducts();
+  const { settings } = useSettings();
+  const lang = settings.language === 'en' ? 'en' : 'pt';
+  const unitOpts = unitOptions(settings.measurementSystem, lang);
   const t = useT();
 
   const [step, setStep] = useState<'input' | 'review'>('input');
@@ -359,11 +366,7 @@ export default function ScanScreen() {
               </View>
               <View style={[styles.field, { flex: 1 }]}>
                 <ThemedText type="small" style={styles.fieldLabel}>{t('scan.unit')}</ThemedText>
-                <TextInput
-                  style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
-                  value={item.unit}
-                  onChangeText={(v) => updateItem(index, { unit: v })}
-                />
+                <Select options={unitOpts} value={item.unit} onChange={(v) => updateItem(index, { unit: v })} />
               </View>
             </View>
 
